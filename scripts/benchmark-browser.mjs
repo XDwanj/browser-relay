@@ -8,11 +8,20 @@ const count = Number(process.env.BROWSER_RELAY_BENCH_RUNS || 7);
 if (!Number.isInteger(count) || count < 1 || count > 30)
   throw new Error("runs must be 1–30");
 const latencyMs = Number(process.env.BROWSER_RELAY_BENCH_RTT_MS || 0);
+const suite = process.env.BROWSER_RELAY_BENCH_SUITE || "original";
+if (!["original", "balanced"].includes(suite))
+  throw new Error("suite must be original or balanced");
+const variants = suite === "balanced"
+  ? ["legacy", "legacy-minimal", "actions", "playwright-cdp"]
+  : ["legacy", "actions", "playwright-cdp"];
 const env = await setupBrowser({ relayLatencyMs: latencyMs });
 const samples = [];
 try {
-  for (let iteration = 0; iteration < count; iteration++)
-    for (const variant of ["legacy", "actions", "playwright-cdp"]) {
+  for (let iteration = 0; iteration < count; iteration++) {
+    // Rotate the supplemental suite to reduce systematic execution-order bias.
+    const offset = suite === "balanced" ? iteration % variants.length : 0;
+    const order = [...variants.slice(offset), ...variants.slice(0, offset)];
+    for (const [position, variant] of order.entries()) {
       await env.page.reload();
       await env.page.bringToFront();
       const native =
@@ -37,7 +46,7 @@ try {
       };
       const before = await env.request("GET", "/api/debug");
       const start = performance.now();
-      if (variant === "legacy") {
+      if (variant === "legacy" || variant === "legacy-minimal") {
         const snapshot = () =>
           request("GET", `/api/snapshot?tabId=${env.tab.id}&maxLength=20000`);
         await snapshot();
@@ -47,17 +56,17 @@ try {
           text: "invoice",
           clear: true,
         });
-        await snapshot();
+        if (variant === "legacy") await snapshot();
         await request("POST", "/api/eval", {
           tabId: env.tab.id,
           expression: `(()=>{const e=document.querySelector('select[name=owner]');e.value='alice';e.dispatchEvent(new Event('change',{bubbles:true}));})()`,
         });
-        await snapshot();
+        if (variant === "legacy") await snapshot();
         await request("POST", "/api/click", {
           tabId: env.tab.id,
           selector: "input[name=active]",
         });
-        await snapshot();
+        if (variant === "legacy") await snapshot();
         await request("POST", "/api/click", {
           tabId: env.tab.id,
           selector: "#form button",
@@ -123,6 +132,7 @@ try {
       samples.push({
         variant,
         iteration,
+        position,
         success: true,
         elapsedMs: Math.round(elapsedMs * 10) / 10,
         httpCalls: calls,
@@ -132,6 +142,7 @@ try {
       });
       await native?.close();
     }
+  }
   const initial = await env.request("POST", "/api/observe", {
     tabId: env.tab.id,
     sessionId: "delta",
@@ -146,9 +157,16 @@ try {
     fullSnapshotBytes: Buffer.byteLength(initial.snapshot),
     changedSnapshotBytes: Buffer.byteLength(changed.task.observation.snapshot),
   };
-  const median = (v) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)];
+  const median = (v) => {
+    const sorted = [...v].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    if (sorted[middle] == null) return null;
+    return sorted.length % 2
+      ? sorted[middle]
+      : (sorted[middle - 1] + sorted[middle]) / 2;
+  };
   const summary = Object.fromEntries(
-    ["legacy", "actions", "playwright-cdp"].map((variant) => {
+    variants.map((variant) => {
       const rows = samples.filter((r) => r.variant === variant);
       return [
         variant,
@@ -170,10 +188,14 @@ try {
   );
   const result = {
     measuredAt: new Date().toISOString(),
+    suite,
+    executionOrder: suite === "balanced" ? "rotating" : "fixed",
     injectedExtensionRttMs: latencyMs,
     platform: process.platform,
     node: process.version,
     chromium: env.context.browser()?.version(),
+    headless: true,
+    viewport: env.page.viewportSize(),
     task: "Search invoice / owner Alice / active only; await visible result",
     scope:
       "Deterministic browser/tool execution; no model inference or token accounting. Playwright over Relay is not Codex Browser Use.",
@@ -183,7 +205,7 @@ try {
   };
   await mkdir("docs/benchmarks", { recursive: true });
   await writeFile(
-    `docs/benchmarks/browser-runtime${latencyMs ? `-rtt${latencyMs}` : ""}.json`,
+    `docs/benchmarks/browser-runtime${suite === "balanced" ? "-balanced" : ""}${latencyMs ? `-rtt${latencyMs}` : ""}.json`,
     JSON.stringify(result, null, 2) + "\n",
   );
   console.log(JSON.stringify({ summary, delta }, null, 2));

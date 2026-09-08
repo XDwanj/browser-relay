@@ -1,0 +1,57 @@
+{
+  "recordedAt": "2026-09-08T19:22:52.183134+00:00",
+  "status": "not_run",
+  "installationCompleted": false,
+  "nativeBrowserSamples": [],
+  "attempts": [
+    {
+      "date": "2026-09-08",
+      "operation": "cua.createBrowserTab(\"iab\", \"about:blank\", {visible:false})",
+      "result": "Browser is not available: iab"
+    },
+    {
+      "date": "2026-09-08",
+      "operation": "cua.createBrowserTab(\"chrome\", \"about:blank\", {sessionName:\"🧪 Browser Relay 对比\"})",
+      "result": "Browser is not available: chrome"
+    },
+    {
+      "date": "2026-09-09",
+      "operation": "cua.getState()",
+      "result": {
+        "browsers": [],
+        "chromeAppListedAsRunning": true
+      }
+    },
+    {
+      "date": "2026-09-09",
+      "operation": "cua.getApp(\"com.openai.codex\")",
+      "result": "Computer Use is not allowed to use the app 'com.openai.codex' for safety reasons."
+    },
+    {
+      "date": "2026-09-09",
+      "operation": "cua.getApp(\"com.google.Chrome\")",
+      "attemptCount": 2,
+      "result": "Computer Use server error -10005: cgWindowNotFound"
+    },
+    {
+      "date": "2026-09-09",
+      "operation": "cua.getApp(\"com.apple.finder\")",
+      "result": "Computer Use server error -10005: cgWindowNotFound"
+    }
+  ],
+  "localDiagnostics": {
+    "scope": "Default Chrome profile at the local filesystem path; not confirmation of the profile or filesystem visible to the CUA desktop service",
+    "extensionCheck": {
+      "installed": false,
+      "enabled": false,
+      "preferencesPath": null
+    },
+    "nativeHostCheck": {
+      "exists": false,
+      "correct": false
+    },
+    "extensionId": "hehggadaopoacecdllhhajmbjkdcmajg"
+  },
+  "nextRequiredState": "A visible operable Chrome window; if necessary the user enables the browser from desktop application settings because CUA prohibits controlling its own app.",
+  "protocol": "codex-native-protocol.md"
+}
