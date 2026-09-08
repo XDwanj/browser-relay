@@ -1,0 +1,254 @@
+{
+  "measuredAt": "2026-09-08T11:15:19.408Z",
+  "injectedExtensionRttMs": 0,
+  "platform": "darwin",
+  "node": "v22.23.1",
+  "chromium": "153.0.8010.12",
+  "task": "Search invoice / owner Alice / active only; await visible result",
+  "scope": "Deterministic browser/tool execution; no model inference or token accounting. Playwright over Relay is not Codex Browser Use.",
+  "summary": {
+    "legacy": {
+      "runs": 7,
+      "successes": 7,
+      "elapsedMs": 273.5,
+      "httpCalls": 10,
+      "extensionRoundTrips": 39,
+      "responseBytes": 3521,
+      "snapshotBytes": 2301
+    },
+    "actions": {
+      "runs": 7,
+      "successes": 7,
+      "elapsedMs": 278.7,
+      "httpCalls": 2,
+      "extensionRoundTrips": 2,
+      "responseBytes": 3919,
+      "snapshotBytes": 2202
+    },
+    "playwright-cdp": {
+      "runs": 7,
+      "successes": 7,
+      "elapsedMs": 334.8,
+      "httpCalls": 0,
+      "extensionRoundTrips": 73,
+      "responseBytes": null,
+      "snapshotBytes": 1425
+    }
+  },
+  "delta": {
+    "fullSnapshotBytes": 1880,
+    "changedSnapshotBytes": 160
+  },
+  "samples": [
+    {
+      "variant": "legacy",
+      "iteration": 0,
+      "success": true,
+      "elapsedMs": 292.4,
+      "httpCalls": 10,
+      "extensionRoundTrips": 39,
+      "responseBytes": 3517,
+      "snapshotBytes": 2301
+    },
+    {
+      "variant": "actions",
+      "iteration": 0,
+      "success": true,
+      "elapsedMs": 278.7,
+      "httpCalls": 2,
+      "extensionRoundTrips": 2,
+      "responseBytes": 3923,
+      "snapshotBytes": 2202
+    },
+    {
+      "variant": "playwright-cdp",
+      "iteration": 0,
+      "success": true,
+      "elapsedMs": 293,
+      "httpCalls": 0,
+      "extensionRoundTrips": 73,
+      "responseBytes": null,
+      "snapshotBytes": 1425
+    },
+    {
+      "variant": "legacy",
+      "iteration": 1,
+      "success": true,
+      "elapsedMs": 274.7,
+      "httpCalls": 10,
+      "extensionRoundTrips": 39,
+      "responseBytes": 3517,
+      "snapshotBytes": 2301
+    },
+    {
+      "variant": "actions",
+      "iteration": 1,
+      "success": true,
+      "elapsedMs": 284.1,
+      "httpCalls": 2,
+      "extensionRoundTrips": 2,
+      "responseBytes": 3926,
+      "snapshotBytes": 2202
+    },
+    {
+      "variant": "playwright-cdp",
+      "iteration": 1,
+      "success": true,
+      "elapsedMs": 329.3,
+      "httpCalls": 0,
+      "extensionRoundTrips": 73,
+      "responseBytes": null,
+      "snapshotBytes": 1425
+    },
+    {
+      "variant": "legacy",
+      "iteration": 2,
+      "success": true,
+      "elapsedMs": 291.8,
+      "httpCalls": 10,
+      "extensionRoundTrips": 39,
+      "responseBytes": 3521,
+      "snapshotBytes": 2301
+    },
+    {
+      "variant": "actions",
+      "iteration": 2,
+      "success": true,
+      "elapsedMs": 265.9,
+      "httpCalls": 2,
+      "extensionRoundTrips": 2,
+      "responseBytes": 3918,
+      "snapshotBytes": 2202
+    },
+    {
+      "variant": "playwright-cdp",
+      "iteration": 2,
+      "success": true,
+      "elapsedMs": 338.5,
+      "httpCalls": 0,
+      "extensionRoundTrips": 73,
+      "responseBytes": null,
+      "snapshotBytes": 1425
+    },
+    {
+      "variant": "legacy",
+      "iteration": 3,
+      "success": true,
+      "elapsedMs": 270.2,
+      "httpCalls": 10,
+      "extensionRoundTrips": 39,
+      "responseBytes": 3521,
+      "snapshotBytes": 2301
+    },
+    {
+      "variant": "actions",
+      "iteration": 3,
+      "success": true,
+      "elapsedMs": 288.1,
+      "httpCalls": 2,
+      "extensionRoundTrips": 2,
+      "responseBytes": 3919,
+      "snapshotBytes": 2202
+    },
+    {
+      "variant": "playwright-cdp",
+      "iteration": 3,
+      "success": true,
+      "elapsedMs": 323.5,
+      "httpCalls": 0,
+      "extensionRoundTrips": 73,
+      "responseBytes": null,
+      "snapshotBytes": 1425
+    },
+    {
+      "variant": "legacy",
+      "iteration": 4,
+      "success": true,
+      "elapsedMs": 273.5,
+      "httpCalls": 10,
+      "extensionRoundTrips": 39,
+      "responseBytes": 3521,
+      "snapshotBytes": 2301
+    },
+    {
+      "variant": "actions",
+      "iteration": 4,
+      "success": true,
+      "elapsedMs": 269.7,
+      "httpCalls": 2,
+      "extensionRoundTrips": 2,
+      "responseBytes": 3918,
+      "snapshotBytes": 2202
+    },
+    {
+      "variant": "playwright-cdp",
+      "iteration": 4,
+      "success": true,
+      "elapsedMs": 338.4,
+      "httpCalls": 0,
+      "extensionRoundTrips": 73,
+      "responseBytes": null,
+      "snapshotBytes": 1425
+    },
+    {
+      "variant": "legacy",
+      "iteration": 5,
+      "success": true,
+      "elapsedMs": 269.7,
+      "httpCalls": 10,
+      "extensionRoundTrips": 39,
+      "responseBytes": 3521,
+      "snapshotBytes": 2301
+    },
+    {
+      "variant": "actions",
+      "iteration": 5,
+      "success": true,
+      "elapsedMs": 278.3,
+      "httpCalls": 2,
+      "extensionRoundTrips": 2,
+      "responseBytes": 3918,
+      "snapshotBytes": 2202
+    },
+    {
+      "variant": "playwright-cdp",
+      "iteration": 5,
+      "success": true,
+      "elapsedMs": 334.8,
+      "httpCalls": 0,
+      "extensionRoundTrips": 73,
+      "responseBytes": null,
+      "snapshotBytes": 1425
+    },
+    {
+      "variant": "legacy",
+      "iteration": 6,
+      "success": true,
+      "elapsedMs": 261.4,
+      "httpCalls": 10,
+      "extensionRoundTrips": 39,
+      "responseBytes": 3521,
+      "snapshotBytes": 2301
+    },
+    {
+      "variant": "actions",
+      "iteration": 6,
+      "success": true,
+      "elapsedMs": 280.1,
+      "httpCalls": 2,
+      "extensionRoundTrips": 2,
+      "responseBytes": 3924,
+      "snapshotBytes": 2202
+    },
+    {
+      "variant": "playwright-cdp",
+      "iteration": 6,
+      "success": true,
+      "elapsedMs": 342.5,
+      "httpCalls": 0,
+      "extensionRoundTrips": 73,
+      "responseBytes": null,
+      "snapshotBytes": 1425
+    }
+  ]
+}

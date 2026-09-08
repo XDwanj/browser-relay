@@ -1,0 +1,194 @@
+{
+  "measuredAt": "2026-09-08T11:15:47.299Z",
+  "injectedExtensionRttMs": 50,
+  "platform": "darwin",
+  "node": "v22.23.1",
+  "chromium": "153.0.8010.12",
+  "task": "Search invoice / owner Alice / active only; await visible result",
+  "scope": "Deterministic browser/tool execution; no model inference or token accounting. Playwright over Relay is not Codex Browser Use.",
+  "summary": {
+    "legacy": {
+      "runs": 5,
+      "successes": 5,
+      "elapsedMs": 2205.6,
+      "httpCalls": 10,
+      "extensionRoundTrips": 38,
+      "responseBytes": 3536,
+      "snapshotBytes": 2301
+    },
+    "actions": {
+      "runs": 5,
+      "successes": 5,
+      "elapsedMs": 403,
+      "httpCalls": 2,
+      "extensionRoundTrips": 2,
+      "responseBytes": 3924,
+      "snapshotBytes": 2202
+    },
+    "playwright-cdp": {
+      "runs": 5,
+      "successes": 5,
+      "elapsedMs": 2465.1,
+      "httpCalls": 0,
+      "extensionRoundTrips": 70,
+      "responseBytes": null,
+      "snapshotBytes": 1425
+    }
+  },
+  "delta": {
+    "fullSnapshotBytes": 1880,
+    "changedSnapshotBytes": 160
+  },
+  "samples": [
+    {
+      "variant": "legacy",
+      "iteration": 0,
+      "success": true,
+      "elapsedMs": 2218.2,
+      "httpCalls": 10,
+      "extensionRoundTrips": 39,
+      "responseBytes": 3540,
+      "snapshotBytes": 2301
+    },
+    {
+      "variant": "actions",
+      "iteration": 0,
+      "success": true,
+      "elapsedMs": 411.1,
+      "httpCalls": 2,
+      "extensionRoundTrips": 2,
+      "responseBytes": 3923,
+      "snapshotBytes": 2202
+    },
+    {
+      "variant": "playwright-cdp",
+      "iteration": 0,
+      "success": true,
+      "elapsedMs": 2422.6,
+      "httpCalls": 0,
+      "extensionRoundTrips": 70,
+      "responseBytes": null,
+      "snapshotBytes": 1425
+    },
+    {
+      "variant": "legacy",
+      "iteration": 1,
+      "success": true,
+      "elapsedMs": 2205.2,
+      "httpCalls": 10,
+      "extensionRoundTrips": 38,
+      "responseBytes": 3535,
+      "snapshotBytes": 2301
+    },
+    {
+      "variant": "actions",
+      "iteration": 1,
+      "success": true,
+      "elapsedMs": 385.3,
+      "httpCalls": 2,
+      "extensionRoundTrips": 2,
+      "responseBytes": 3926,
+      "snapshotBytes": 2202
+    },
+    {
+      "variant": "playwright-cdp",
+      "iteration": 1,
+      "success": true,
+      "elapsedMs": 2473.1,
+      "httpCalls": 0,
+      "extensionRoundTrips": 70,
+      "responseBytes": null,
+      "snapshotBytes": 1425
+    },
+    {
+      "variant": "legacy",
+      "iteration": 2,
+      "success": true,
+      "elapsedMs": 2205.6,
+      "httpCalls": 10,
+      "extensionRoundTrips": 38,
+      "responseBytes": 3536,
+      "snapshotBytes": 2301
+    },
+    {
+      "variant": "actions",
+      "iteration": 2,
+      "success": true,
+      "elapsedMs": 403,
+      "httpCalls": 2,
+      "extensionRoundTrips": 2,
+      "responseBytes": 3924,
+      "snapshotBytes": 2202
+    },
+    {
+      "variant": "playwright-cdp",
+      "iteration": 2,
+      "success": true,
+      "elapsedMs": 2470.5,
+      "httpCalls": 0,
+      "extensionRoundTrips": 70,
+      "responseBytes": null,
+      "snapshotBytes": 1425
+    },
+    {
+      "variant": "legacy",
+      "iteration": 3,
+      "success": true,
+      "elapsedMs": 2204.1,
+      "httpCalls": 10,
+      "extensionRoundTrips": 38,
+      "responseBytes": 3539,
+      "snapshotBytes": 2301
+    },
+    {
+      "variant": "actions",
+      "iteration": 3,
+      "success": true,
+      "elapsedMs": 410.4,
+      "httpCalls": 2,
+      "extensionRoundTrips": 2,
+      "responseBytes": 3922,
+      "snapshotBytes": 2202
+    },
+    {
+      "variant": "playwright-cdp",
+      "iteration": 3,
+      "success": true,
+      "elapsedMs": 2455.5,
+      "httpCalls": 0,
+      "extensionRoundTrips": 70,
+      "responseBytes": null,
+      "snapshotBytes": 1425
+    },
+    {
+      "variant": "legacy",
+      "iteration": 4,
+      "success": true,
+      "elapsedMs": 2209.3,
+      "httpCalls": 10,
+      "extensionRoundTrips": 38,
+      "responseBytes": 3535,
+      "snapshotBytes": 2301
+    },
+    {
+      "variant": "actions",
+      "iteration": 4,
+      "success": true,
+      "elapsedMs": 382.9,
+      "httpCalls": 2,
+      "extensionRoundTrips": 2,
+      "responseBytes": 3926,
+      "snapshotBytes": 2202
+    },
+    {
+      "variant": "playwright-cdp",
+      "iteration": 4,
+      "success": true,
+      "elapsedMs": 2465.1,
+      "httpCalls": 0,
+      "extensionRoundTrips": 70,
+      "responseBytes": null,
+      "snapshotBytes": 1425
+    }
+  ]
+}

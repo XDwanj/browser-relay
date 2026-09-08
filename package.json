@@ -1,6 +1,6 @@
 {
   "name": "@linsoai/browser-relay",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "type": "module",
   "engines": {
     "node": ">=18"
@@ -25,7 +25,9 @@
     "docs/demo/intranet.html",
     "skills/",
     "README.md",
-    "docs/README.zh-CN.md"
+    "docs/README.zh-CN.md",
+    "docs/browser-use-comparison.md",
+    "docs/benchmarks/"
   ],
   "scripts": {
     "start": "node server/relay-server.js",
@@ -38,7 +40,10 @@
     "sync-version": "node scripts/sync-version.mjs",
     "prepublishOnly": "node scripts/sync-version.mjs",
     "postinstall": "node server/install.js",
-    "postuninstall": "node server/uninstall.js"
+    "postuninstall": "node server/uninstall.js",
+    "test:browser": "node scripts/run-browser-tests.mjs",
+    "bench:browser": "node scripts/benchmark-browser.mjs",
+    "bench:serve": "node scripts/serve-browser-benchmark.mjs"
   },
   "keywords": [
     "agent-skill",
@@ -62,5 +67,12 @@
   },
   "dependencies": {
     "ws": "^8.21.1"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  },
+  "exports": {
+    ".": "./server/relay-server.js",
+    "./sdk": "./server/sdk.js"
   }
 }

@@ -156,6 +156,24 @@ If Browser Relay solves a workflow you actually have, starring the repository he
 
 ## Agent Friendly by Default
 
+Version 1.5 adds a persistent JavaScript runtime, accessibility references and
+ordered action groups. Inspect with `browser-relay observe --tab <id>`, then
+execute a known sequence with `browser-relay actions --tab <id> --file actions.json`.
+One group runs inside the extension and returns the resulting state. Independent
+tabs may run concurrently; groups on one tab are serialized and cancellable.
+
+For scripts, use `browser-relay exec --file workflow.js`, or the MCP
+`browser_exec` tool to retain variables between calls. MCP screenshots are image
+content blocks. Visual click, drag and hover support screenshot coordinate
+mapping; background semantic clicks preserve the user's foreground tab. Visual
+mouse input reports `needs_foreground` when a visible tab is required.
+
+See the [runtime and SDK reference](skills/browser-relay/references/runtime.md)
+and [Codex comparison and measured results](docs/browser-use-comparison.md).
+Local scripts are trusted code with the agent's OS permissions; their separate
+process provides timeouts and reset, not a security sandbox. Remote devices only
+receive browser operations, never the agent's local JavaScript source.
+
 Browser Relay is designed to be comfortable for agents, not just low-level automation scripts.
 
 - The included Skill tells agents when to use Browser Relay and how to interact safely.

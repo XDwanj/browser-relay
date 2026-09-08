@@ -13,6 +13,7 @@
  */
 import { readFileSync } from "node:fs";
 import { DEFAULT_REMOTE_HOST, parseRemoteDeviceId, remoteHttpBase } from "./remote-protocol.js";
+import { createScriptRuntime, EXEC_DESCRIPTION } from "./script-runtime.js";
 
 const RELAY_URL = (process.env.BROWSER_RELAY_URL || "http://127.0.0.1:18795").replace(/\/$/, "");
 const RELAY_PORT = parseInt(new URL(RELAY_URL).port || "18795", 10);
@@ -396,16 +397,36 @@ const TOOLS = [
   },
 ];
 
+const scriptRuntime = createScriptRuntime({request:relayRequest});
+TOOLS.push(
+  {name:'browser_observe',description:'Read current accessibility state with actionable refs, frame IDs and viewport. Use diff=true within one session to reduce unchanged output. Screenshot mode returns an image and coordinate mapping.',inputSchema:{type:'object',properties:{tabId:{type:'string'},sessionId:{type:'string'},mode:{type:'string',enum:['snapshot','screenshot']},diff:{type:'boolean'},maxLength:{type:'integer'},fullPage:{type:'boolean'}},required:['tabId']},handler:args=>relayPost('/api/observe',args)},
+  {name:'browser_actions',description:'Execute a short ordered group of known browser actions on one explicit tab, then return updated state. Supported types: click, double_click, hover, move, drag, fill, type, key, scroll, wait, select, check, navigate. target is {ref}, {selector}, or {role,name,frameId?}. Coordinates use CSS viewport pixels, or image pixels when screenshotId is supplied. Stops at the first error. async=true returns a cancellable task.',inputSchema:{type:'object',properties:{tabId:{type:'string'},actions:{type:'array',items:{type:'object'},minItems:1,maxItems:100},observe:{type:'string',enum:['none','snapshot','screenshot']},sessionId:{type:'string'},async:{type:'boolean'},timeoutMs:{type:'integer'}},required:['tabId','actions']},handler:args=>relayPost('/api/actions',args)},
+  {name:'browser_task',description:'Get a browser task or cancel pending actions. Cancellation does not undo completed actions.',inputSchema:{type:'object',properties:{id:{type:'string'},cancel:{type:'boolean'}},required:['id']},handler:args=>args.cancel?relayPost(`/api/tasks/${encodeURIComponent(args.id)}/cancel`,{}):relayGet(`/api/tasks/${encodeURIComponent(args.id)}`)},
+  {name:'browser_exec',description:EXEC_DESCRIPTION,inputSchema:{type:'object',properties:{code:{type:'string'},sessionId:{type:'string'},timeoutMs:{type:'integer'}},required:['code']},handler:args=>scriptRuntime.execute(args)},
+  {name:'browser_exec_reset',description:'Reset one persistent JavaScript session and request cancellation of its pending browser tasks. Existing tabs remain open.',inputSchema:{type:'object',properties:{sessionId:{type:'string'}}},handler:async args=>{await scriptRuntime.reset(args.sessionId);return {ok:true};}},
+);
 const toolMap = new Map(TOOLS.map((t) => [t.name, t]));
+
+function toolContent(result) {
+  if(Array.isArray(result?.content)) return result;
+  const shot=result?.task?.observation?.data?result.task.observation:result?.data?result:null;
+  if(shot?.format==='png') {
+    const {data,...metadata}=shot;
+    const text=result.task?{...result,task:{...result.task,observation:metadata}}:metadata;
+    return {content:[{type:'image',data,mimeType:'image/png'},{type:'text',text:JSON.stringify(text)}]};
+  }
+  return {content:[{type:'text',text:JSON.stringify(result)}]};
+}
 
 // ---------------------------------------------------------------------------
 // JSON-RPC / MCP protocol over stdio
 // ---------------------------------------------------------------------------
 let initialized = false;
+let transportFormat = 'framed';
 
 function send(msg) {
   const json = JSON.stringify(msg);
-  process.stdout.write(`Content-Length: ${Buffer.byteLength(json)}\r\n\r\n${json}`);
+  process.stdout.write(transportFormat === 'ndjson' ? json+'\n' : `Content-Length: ${Buffer.byteLength(json)}\r\n\r\n${json}`);
 }
 
 function sendResult(id, result) { send({ jsonrpc: "2.0", id, result }); }
@@ -439,7 +460,7 @@ async function handleMessage(msg) {
     }
     try {
       const result = await tool.handler(params?.arguments || {});
-      return sendResult(id, { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] });
+      return sendResult(id, toolContent(result));
     } catch (err) {
       return sendResult(id, { content: [{ type: "text", text: JSON.stringify(toolErrorPayload(err), null, 2) }], isError: true });
     }
@@ -453,21 +474,28 @@ async function handleMessage(msg) {
 // ---------------------------------------------------------------------------
 // Stdio transport: read Content-Length framed JSON-RPC messages
 // ---------------------------------------------------------------------------
-let buffer = "";
+let buffer = Buffer.alloc(0);
 
-process.stdin.setEncoding("utf-8");
 process.stdin.on("data", (chunk) => {
-  buffer += chunk;
+  buffer = Buffer.concat([buffer,chunk]);
   while (true) {
+    if(buffer.length > 32*1024*1024) {process.stdin.destroy();void scriptRuntime.close();return;}
+    if(buffer[0]===123) {
+      const end=buffer.indexOf('\n');if(end===-1)break;
+      transportFormat='ndjson';
+      const line=buffer.subarray(0,end).toString('utf8');buffer=buffer.subarray(end+1);
+      try {const msg=JSON.parse(line);void handleMessage(msg).catch(error=>sendError(msg.id,-32603,error.message));}catch(error){sendError(null,-32700,error.message);}
+      continue;
+    }
     const headerEnd = buffer.indexOf("\r\n\r\n");
     if (headerEnd === -1) break;
-    const headerBlock = buffer.slice(0, headerEnd);
+    const headerBlock = buffer.subarray(0, headerEnd).toString('ascii');
     const match = headerBlock.match(/Content-Length:\s*(\d+)/i);
     if (!match) { buffer = buffer.slice(headerEnd + 4); continue; }
     const contentLength = parseInt(match[1], 10);
     const bodyStart = headerEnd + 4;
     if (buffer.length < bodyStart + contentLength) break;
-    const body = buffer.slice(bodyStart, bodyStart + contentLength);
+    const body = buffer.subarray(bodyStart, bodyStart + contentLength).toString('utf8');
     buffer = buffer.slice(bodyStart + contentLength);
     try {
       const msg = JSON.parse(body);
@@ -481,4 +509,5 @@ process.stdin.on("data", (chunk) => {
   }
 });
 
-process.stdin.on("end", () => process.exit(0));
+process.stdin.on("end", async () => {await scriptRuntime.close();process.exit(0);});
+process.on('SIGTERM',async()=>{await scriptRuntime.close();process.exit(0);});

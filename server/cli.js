@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 import { spawn, spawnSync, execSync } from "node:child_process";
-import { chmodSync, existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir, platform } from "node:os";
 import { DEFAULT_REMOTE_HOST, parseRemoteDeviceId, remoteHttpBase } from "./remote-protocol.js";
 import { runNpxSync } from "./npx-runner.js";
+import { createScriptRuntime } from "./script-runtime.js";
+import { createInterface } from "node:readline";
 import { inspectPosixServiceState, relayStartRemediation } from "./service-state.js";
 import {
   inspectWindowsTask,
@@ -849,12 +851,18 @@ function skill(args = []) {
     process.exitCode = 1;
     return;
   }
+  const skillFiles = (directory, prefix = '') => readdirSync(directory, {withFileTypes:true}).flatMap(entry => {
+    const relative = join(prefix,entry.name);
+    return entry.isDirectory() ? skillFiles(join(directory,entry.name),relative) : entry.isFile() ? [relative] : [];
+  });
+  const shippedFiles = skillFiles(SKILL_DIR);
   const verification = parsed.agents.map((agent) => {
     const target = skillTargetPath(agent);
     let statusValue = "missing";
     try {
       statusValue = readFileSync(target, "utf-8") === shippedSkill ? "current" : "outdated";
-    } catch {}
+      if(statusValue === 'current' && !shippedFiles.every(file => readFileSync(join(SKILL_DIR,file)).equals(readFileSync(join(dirname(target),file))))) statusValue='outdated';
+    } catch { statusValue='missing'; }
     return { agent, path: target, status: statusValue };
   });
   const failed = verification.filter((item) => item.status !== "current");
@@ -985,6 +993,13 @@ Commands:
   uninstall   Unregister the background service
 
 Browser commands:
+  observe     Accessibility snapshot with actionable refs; --diff --session <id>
+  actions     Execute ordered actions from --file or --stdin; optional --async
+  task        Read a task by id; --cancel stops pending actions
+  exec        Run trusted JavaScript from --file/--stdin (browser SDK available)
+  repl        Persistent JavaScript over NDJSON stdin, one {code} object per line
+  new-tab     Open a new background tab
+  close-tab   Close an explicit tab id
   tabs        List attached Chrome tabs
   snapshot    Print annotated page text
   wait        Wait for a CSS selector to attach or become visible
@@ -1019,6 +1034,7 @@ async function version() {
 }
 
 const BOOLEAN_FLAGS = new Set([
+  "async", "diff", "cancel", "allowFocus", "includeNodes",
   "base64", "clear", "double", "doubleClick", "fullPage", "json",
   "raw", "saveAs", "stdin", "submit",
 ]);
@@ -1409,6 +1425,42 @@ async function browserApiCommand(cmd, args) {
   remoteContext = remoteContextFrom(flags);
 
   switch (cmd) {
+    case 'observe': {
+      const result=await relayRequest('POST','/api/observe',{tabId:tabIdFrom(flags),sessionId:flagValue(flags,'session'),diff:flagBool(flags,'diff'),includeNodes:flagBool(flags,'include-nodes'),maxLength:flagValue(flags,'max-length')?Number(flagValue(flags,'max-length')):undefined});
+      ensureOk(result,json);
+      if(json)return printData(result,true);
+      console.log(`${result.title}\n${result.url}\n${result.snapshot}`);return;
+    }
+    case 'actions': {
+      const actions=JSON.parse(readInput(flags,positional,'actions','actions JSON'));
+      const result=await relayRequest('POST','/api/actions',{tabId:tabIdFrom(flags),actions,observe:flagValue(flags,'observe')||'snapshot',async:flagBool(flags,'async'),sessionId:flagValue(flags,'session')});
+      ensureOk(result,json);return printData(result,true);
+    }
+    case 'task': {
+      const id=requireValue(positional[0],'task id is required');
+      return printData(await relayRequest(flagBool(flags,'cancel')?'POST':'GET',`/api/tasks/${encodeURIComponent(id)}${flagBool(flags,'cancel')?'/cancel':''}`,flagBool(flags,'cancel')?{}:undefined),true);
+    }
+    case 'new-tab':return printData(await relayRequest('POST','/api/tabs/create',{url:positional[0]||'about:blank'}),true);
+    case 'close-tab':return printData(await relayRequest('POST','/api/tabs/close',{tabId:requireValue(tabIdFrom(flags)||positional[0],'tab id is required')}),true);
+    case 'exec':
+    case 'repl': {
+      const runtime=createScriptRuntime({request:relayRequest});
+      const execute=async(input)=>{
+        const result=await runtime.execute(input);
+        if(cmd==='repl')console.log(JSON.stringify(result));
+        else if(json)printData(result,true);
+        else for(const item of result.content) {
+          if(item.type==='text')console.log(item.text);
+          else {const dest=flagValue(flags,'output');if(!dest)throw new Error('Use --output <png> or --json to return script images');writeFileSync(dest,Buffer.from(item.data,'base64'));console.log(`Saved screenshot: ${dest}`);}
+        }
+        if(result.isError)process.exitCode=1;
+      };
+      try {
+        if(cmd==='exec')await execute({code:readInput(flags,positional,'code','JavaScript code'),timeoutMs:flagValue(flags,'timeout')?Number(flagValue(flags,'timeout')):30000});
+        else {const lines=createInterface({input:process.stdin});for await(const line of lines){if(!line.trim())continue;try{await execute(JSON.parse(line));}catch(error){console.log(JSON.stringify({isError:true,error:error.message}));}}}
+      } finally {await runtime.close();}
+      return;
+    }
     case "debug": {
       return printData(await relayRequest("GET", "/api/debug"), true);
     }
@@ -1706,6 +1758,13 @@ switch (cmd) {
   case "uninstall": await uninstall(); break;
   case "remote": remoteCommand(process.argv.slice(3)); break;
   case "tabs":
+  case "observe":
+  case "actions":
+  case "task":
+  case "exec":
+  case "repl":
+  case "new-tab":
+  case "close-tab":
   case "list":
   case "console":
   case "network":

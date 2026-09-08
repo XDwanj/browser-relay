@@ -72,7 +72,7 @@ function setupFakeNpx(t) {
   mkdirSync(home, { recursive: true });
   mkdirSync(bin, { recursive: true });
   const fakeSource = `
-const { copyFileSync, mkdirSync, writeFileSync } = require('node:fs');
+const { copyFileSync, cpSync, mkdirSync, writeFileSync } = require('node:fs');
 const { join } = require('node:path');
 const args = process.argv.slice(2);
 const home = process.env.USERPROFILE || process.env.HOME;
@@ -90,7 +90,8 @@ for (const agent of agents) {
     : join(home, '.agents', 'skills');
   const target = join(base, 'browser-relay');
   mkdirSync(target, { recursive: true });
-  copyFileSync(join(source, 'SKILL.md'), join(target, 'SKILL.md'));
+  if(process.env.FAKE_NPX_MODE === 'partial-copy') copyFileSync(join(source, 'SKILL.md'), join(target, 'SKILL.md'));
+  else cpSync(source,target,{recursive:true});
 }
 `;
   const fakeNpxCli = join(bin, 'fake-npx.cjs');
@@ -217,6 +218,11 @@ test('skill install rejects silent zero-install and normalizes npx failures', as
   assert.equal(noCopy.code, 1);
   assert.match(noCopy.stderr, /target verification failed/);
   assert.match(noCopy.stderr, /codex: missing/);
+
+  const partial = setupFakeNpx(t);
+  const missingReferences = await runCli(t, 0, ['skill', 'install', '--agent', 'codex'], {...partial.env, FAKE_NPX_MODE:'partial-copy'});
+  assert.equal(missingReferences.code, 1);
+  assert.match(missingReferences.stderr, /target verification failed/);
 
   const failed = setupFakeNpx(t);
   const nonzero = await runCli(t, 0, ['skill', 'install', '--agent', 'codex'], {

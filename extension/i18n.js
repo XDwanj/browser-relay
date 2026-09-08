@@ -4,6 +4,9 @@
 ;(function () {
   const MESSAGES = {
     en: {
+      popupActiveTasks: 'browser tasks pending',
+      popupCancelTasks: 'Cancel current tasks',
+      popupCancellingTasks: 'Stopping pending actions…',
       controlConsole: 'Control Console',
       tagline: 'Bridge Chrome to<br>agents · local &amp; remote',
       localRelay: 'Local Relay',
@@ -58,6 +61,9 @@
       popupInstallHint: 'Already installed? Check with <code style="display:inline; padding:1px 5px; cursor:text; font-size:11px">browser-relay status</code>',
     },
     zh_CN: {
+      popupActiveTasks: '个浏览器任务待完成',
+      popupCancelTasks: '取消当前任务',
+      popupCancellingTasks: '正在停止后续操作…',
       controlConsole: '控制台',
       tagline: '把 Chrome 接到<br>agent · 本地与远程',
       localRelay: '本地中继',

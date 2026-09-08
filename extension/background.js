@@ -2,6 +2,7 @@
 // Core logic adapted from openclaw auto-attach fork, stripped of gateway handshake
 
 import { SNAPSHOT_JS } from './snapshot.js'
+import { createAutomation } from './automation.js'
 import { buildWaitExpression, normalizeWaitOptions } from './wait.js'
 import { createRemoteAuthMessageHandler } from './remote-auth.js'
 
@@ -493,7 +494,20 @@ function getTabByTargetId(targetId) {
   return null
 }
 
+const attachPromises = new Map()
 async function attachTab(tabId, opts = {}) {
+  const current = tabs.get(tabId)
+  if (current?.state === 'connected') {
+    if (current.idle) await wakeTab(tabId)
+    return {sessionId:current.sessionId,targetId:current.targetId,tabId:publicTabIdFor(tabId)}
+  }
+  if (attachPromises.has(tabId)) return attachPromises.get(tabId)
+  const pendingAttach = attachTabNow(tabId,opts)
+  attachPromises.set(tabId,pendingAttach)
+  try {return await pendingAttach} finally {attachPromises.delete(tabId)}
+}
+
+async function attachTabNow(tabId, opts = {}) {
   const debuggee = { tabId }
   await chrome.debugger.attach(debuggee, '1.3')
   await chrome.debugger.sendCommand(debuggee, 'Page.enable').catch(() => {})
@@ -675,6 +689,11 @@ async function handleForwardCdpCommand(msg) {
   const params = msg?.params?.params || undefined
   const sessionId = typeof msg?.params?.sessionId === 'string' ? msg.params.sessionId : undefined
 
+  if (method === 'BrowserRelay.automation') {
+    try { return await automation.request(params.method, params.path, params.body) }
+    catch (error) { return { ok:false, code:error.code || 'automation_failed', message:error.message, error:error.message, status:error.status || 500 } }
+  }
+
   if (method === 'BrowserRelay.download') return await startBrowserDownload(params)
   if (method === 'BrowserRelay.searchDownloads') return await searchBrowserDownloads(params)
 
@@ -748,13 +767,16 @@ async function handleForwardCdpCommand(msg) {
 function onDebuggerEvent(source, method, params) {
   const tabId = source.tabId
   if (!tabId) return
+  if (method === 'Page.frameNavigated' && !params.frame?.parentId) automation.invalidate(tabId)
   const tab = tabs.get(tabId)
   if (!tab?.sessionId) return
 
   if (method === 'Target.attachedToTarget' && params?.sessionId) {
+    automation.attachChild(tabId, params)
     childSessionToTab.set(String(params.sessionId), tabId)
   }
   if (method === 'Target.detachedFromTarget' && params?.sessionId) {
+    automation.detachChild(tabId, params.sessionId)
     childSessionToTab.delete(String(params.sessionId))
   }
 
@@ -776,6 +798,7 @@ async function onDebuggerDetach(source, reason) {
   if (idleDetaching.has(tabId) || tabs.get(tabId)?.idle) return
 
   if (reason === 'canceled_by_user' || reason === 'replaced_with_devtools') {
+    automation.close(tabId)
     void detachTab(tabId, reason)
     return
   }
@@ -839,6 +862,7 @@ async function onDebuggerDetach(source, reason) {
 
 // Tab lifecycle listeners
 chrome.tabs.onRemoved.addListener((tabId) => void whenReady(() => {
+  automation.close(tabId)
   reattachPending.delete(tabId)
   idleDetaching.delete(tabId)
   clearTabActivity(tabId)
@@ -1044,7 +1068,7 @@ async function ensureRemoteHubConnection() {
       version: chrome.runtime.getManifest().version,
       routeId: cfg.remoteRouteId,
       deviceName: 'Browser Relay',
-      capabilities: ['tabs', 'eval', 'wait', 'snapshot', 'click', 'type', 'key', 'scroll', 'navigate', 'screenshot', 'console', 'network'],
+      capabilities: ['tabs', 'eval', 'wait', 'snapshot', 'click', 'type', 'key', 'scroll', 'navigate', 'screenshot', 'console', 'network', 'observe', 'actions', 'tasks', 'refs', 'frames'],
     }))
 
     ws.onclose = () => { if (ws !== remoteWs) return; onRemoteHubClosed('closed') }
@@ -1176,6 +1200,11 @@ async function executeRemoteApi(method, path, body) {
   const u = new URL(String(path || '/'), 'http://relay.local')
   const p = u.pathname
   const payload = body && typeof body === 'object' ? body : {}
+
+  if (isAutomationPath(p)) {
+    try { const result = await automation.request(method, path, payload); return {status:result.ok===false ? result.status || 400 : 200,body:result} }
+    catch(error) { return apiError(error.code || 'automation_failed', error.message, error.status || 500) }
+  }
 
   if (method === 'GET' && p === '/api/tabs') return { status: 200, body: await apiListTabs() }
   if (method === 'POST' && p === '/api/eval') return { status: 200, body: await apiEval(payload, u.searchParams) }
@@ -1691,6 +1720,8 @@ async function apiNetworkClear(body) {
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type === 'getAutomationTasks') {sendResponse({tasks:automation.activeTasks()});return false}
+  if (msg?.type === 'cancelAutomationTasks') {sendResponse({cancelled:automation.cancelAll()});return false}
   if (msg?.type === 'relayCheck') {
     const { url } = msg
     fetch(url, { method: 'GET', signal: AbortSignal.timeout(2000) })
@@ -1757,6 +1788,27 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 
   return false
+})
+
+function isAutomationPath(path) {
+  return ['/api/observe', '/api/actions', '/api/capabilities', '/api/tabs/create', '/api/tabs/close'].includes(path) || path.startsWith('/api/tasks/')
+}
+
+const automation = createAutomation({
+  resolveTab: resolveRemoteTabId,
+  send: async (tabId, method, params, sessionId) => {
+    await ensureRemoteAttached(tabId)
+    markTabActivity(tabId)
+    return chrome.debugger.sendCommand({tabId, ...(sessionId ? {sessionId} : {})}, method, params)
+  },
+  createTab: async (url) => {
+    if (url !== 'about:blank' && !/^https?:\/\//.test(url)) throw new Error('Only HTTP(S) and about:blank are supported')
+    const tab = await chrome.tabs.create({url, active:false})
+    const attached = await attachTab(tab.id)
+    return {tabId:attached.tabId, url}
+  },
+  closeTab: (tabId) => chrome.tabs.remove(tabId),
+  focusTab: async (tabId) => { await chrome.tabs.update(tabId,{active:true}) },
 })
 
 const initPromise = rehydrateState()

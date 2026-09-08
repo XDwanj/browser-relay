@@ -44,6 +44,9 @@ async function fetchStatus() {
   try {
     const res = await chrome.runtime.sendMessage({ type: 'getStatus' })
     if (res) render(res)
+    const {tasks=[]} = await chrome.runtime.sendMessage({type:'getAutomationTasks'})
+    document.getElementById('task-controls').hidden = tasks.length === 0
+    document.getElementById('task-status').textContent = `${tasks.length} ${t('popupActiveTasks')}`
   } catch {
     // background may be waking up
   }
@@ -60,6 +63,11 @@ els.reconnect.addEventListener('click', async () => {
 
 els.options.addEventListener('click', () => {
   chrome.runtime.openOptionsPage()
+})
+
+document.getElementById('cancel-tasks').addEventListener('click',async()=>{
+  await chrome.runtime.sendMessage({type:'cancelAutomationTasks'})
+  document.getElementById('task-status').textContent=t('popupCancellingTasks')
 })
 
 els.docs.addEventListener('click', (e) => {

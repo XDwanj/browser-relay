@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { WebSocketServer, WebSocket } from "ws";
 import { SNAPSHOT_JS } from "./snapshot.js";
 import { buildWaitExpression, normalizeWaitOptions } from "../extension/wait.js";
+import { createCdpBridge } from "./cdp-bridge.js";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -60,7 +61,9 @@ let extensionProtocolError = null;
 const PUBLIC_TAB_ID_PATTERN = /^t_[A-Za-z0-9_-]{10}$/;
 const connectedTargets = new Map(); // sessionId -> { sessionId, tabId, targetId, targetInfo }
 let nextExtensionId = 1;
+let commandsSent = 0;
 const pendingCommands = new Map();
+const cdpBridge = createCdpBridge({targets:()=>connectedTargets,send:sendToExtension,ensure:ensureExtension});
 let nextConsoleEntryId = 1;
 let consoleEntries = [];
 const consoleEnabledSessions = new Set();
@@ -114,6 +117,7 @@ function sendToExtension(method, params, sessionId) {
     return Promise.reject(new ApiError(503, "extension_not_connected", "Extension not connected", { retryable: true }));
   }
   const id = nextExtensionId++;
+  commandsSent++;
   const payload = { id, method: "forwardCDPCommand", params: { method, params, ...(sessionId ? { sessionId } : {}) } };
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -395,6 +399,7 @@ function onExtensionMessage(data) {
     const cdpParams = msg.params?.params;
     const eventSessionId = msg.params?.sessionId;
     const eventTabId = msg.params?.tabId;
+    cdpBridge.event(cdpMethod, cdpParams, eventSessionId);
 
     if (eventSessionId && (
       cdpMethod === "Runtime.consoleAPICalled" ||
@@ -1168,10 +1173,18 @@ const server = createServer(async (req, res) => {
 
   // All /api/* routes
   if (path.startsWith("/api/")) {
+    if (["/api/observe", "/api/actions", "/api/capabilities", "/api/tabs/create", "/api/tabs/close"].includes(path) || path.startsWith("/api/tasks/")) {
+      try {
+        await ensureExtension();
+        const body = req.method === "POST" ? await readBody(req) : {};
+        const result = await sendToExtension("BrowserRelay.automation", {method:req.method,path:req.url,body});
+        return jsonResponse(res, result.ok === false ? result.status || 400 : 200, result);
+      } catch(error) { return writeError(res,error); }
+    }
     if (req.method === "GET" && path === "/api/debug") {
       const tabCount = connectedTargets.size;
       const uptimeSeconds = Math.floor((Date.now() - serverStartTime) / 1000);
-      return jsonResponse(res, 200, { ok: true, version: RELAY_VERSION, host: RELAY_HOST, port: RELAY_PORT, connected: extensionConnected(), tabCount, uptimeSeconds });
+      return jsonResponse(res, 200, { ok: true, version: RELAY_VERSION, host: RELAY_HOST, port: RELAY_PORT, connected: extensionConnected(), tabCount, uptimeSeconds, commandsSent });
     }
 
     const routeMap = {
@@ -1223,10 +1236,19 @@ const server = createServer(async (req, res) => {
 // WebSocket upgrade
 // ---------------------------------------------------------------------------
 const wss = new WebSocketServer({ noServer: true });
+const cdpWss = new WebSocketServer({ noServer: true, maxPayload: 16 * 1024 * 1024 });
+cdpWss.on("connection", (ws) => cdpBridge.connect(ws));
 
 server.on("upgrade", (req, socket, head) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
   const pathname = url.pathname;
+
+  if (pathname === "/cdp") {
+    // Browser pages cannot open an unrestricted debugger WebSocket via Origin.
+    if (req.headers.origin) { socket.write("HTTP/1.1 403 Forbidden\r\n\r\n"); socket.destroy(); return; }
+    cdpWss.handleUpgrade(req,socket,head,(ws)=>cdpWss.emit("connection",ws,req));
+    return;
+  }
 
   if (pathname !== "/extension") {
     socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
@@ -1242,6 +1264,7 @@ server.on("upgrade", (req, socket, head) => {
   if (extensionWs && extensionWs.readyState !== WebSocket.OPEN) {
     try { extensionWs.terminate(); } catch { /* ignore */ }
     extensionWs = null;
+    cdpBridge.disconnect();
   }
 
   wss.handleUpgrade(req, socket, head, (ws) => { wss.emit("connection", ws, req); });
@@ -1269,6 +1292,7 @@ wss.on("connection", (ws, req) => {
     if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
     if (extensionWs !== ws) return;
     extensionWs = null;
+    cdpBridge.disconnect();
     for (const [id, pending] of pendingCommands) {
       clearTimeout(pending.timer);
       pending.reject(new ApiError(503, "extension_disconnected", "Extension disconnected", { retryable: true }));

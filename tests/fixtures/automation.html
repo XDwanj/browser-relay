@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Browser Relay benchmark</title>
+<style>body{font:16px system-ui;max-width:900px;margin:24px}label{display:block;margin:10px 0}button,input,select{font:inherit;padding:8px}fieldset{display:inline-block;vertical-align:top}iframe{width:330px;height:100px}#scrollbox{height:90px;overflow:auto;border:1px solid}canvas{border:1px solid}#drag{width:60px;height:40px;background:steelblue;touch-action:none}#overlay{display:none;position:fixed;inset:0;background:#fff9;z-index:10}</style>
+<h1>Browser Relay benchmark</h1><form id="form">
+<label>Search <input name="query"></label><label>Owner <select name="owner"><option value="all">All</option><option value="alice">Alice</option></select></label>
+<label><input type="checkbox" name="active"> Active only</label><button>Search records</button></form>
+<p role="status" id="status">Ready</p><button id="add">Add row</button><ul id="rows"><li>Initial row</li></ul>
+<fieldset><legend>Draft</legend><button>Save</button></fieldset><fieldset><legend>Published</legend><button>Save</button></fieldset>
+<label>Password <input type="password" value="fixture-secret-never-print"></label>
+<div id="shadow"></div><iframe title="Same origin frame" src="/frame"></iframe><iframe id="cross" title="Cross origin frame"></iframe>
+<p><canvas id="canvas" width="300" height="90" aria-label="Drawing surface"></canvas></p><p id="canvas-result">Canvas untouched</p>
+<div id="drag" aria-label="Drag handle"></div><p id="drag-result">Not dragged</p>
+<div id="scrollbox" tabindex="0" aria-label="Scrollable panel"><div style="height:280px">Panel start</div><button>Panel end</button></div>
+<button id="delayed">Show delayed</button><button id="disabled" disabled>Disabled action</button><div id="overlay">Covered</div>
+<script>
+const $=s=>document.querySelector(s);
+$('#form').onsubmit=e=>{e.preventDefault();delete $('#status').dataset.ready;$('#status').textContent='Loading';setTimeout(()=>{$('#status').textContent=`Found: ${$('#form').query.value} / ${$('#form').owner.value} / ${$('#form').active.checked?'active':'all'}`;$('#status').dataset.ready='true';},120)};
+$('#add').onclick=()=>$('#rows').insertAdjacentHTML('beforeend','<li>Added row</li>');
+$('#shadow').attachShadow({mode:'open'}).innerHTML='<button onclick="this.textContent=\'Shadow done\'">Shadow action</button>';
+$('#cross').src=`http://localhost:${location.port}/frame?cross=1`;
+const canvas=$('#canvas'), ctx=canvas.getContext('2d');ctx.fillStyle='#267d47';ctx.fillRect(100,20,100,50);ctx.fillStyle='white';ctx.font='18px sans-serif';ctx.fillText('Click here',108,52);
+canvas.onclick=e=>{$('#canvas-result').textContent=e.offsetX>=100&&e.offsetX<=200&&e.offsetY>=20&&e.offsetY<=70?'Canvas done':'Canvas missed'};
+let dragging=false,start=0;$('#drag').onpointerdown=e=>{dragging=true;start=e.clientX;$('#drag').setPointerCapture(e.pointerId)};$('#drag').onpointerup=e=>{if(dragging&&e.clientX-start>80)$('#drag-result').textContent='Drag done';dragging=false};
+$('#delayed').onclick=()=>setTimeout(()=>{const b=document.createElement('button');b.textContent='Delayed ready';document.body.append(b)},150);
+</script><div style="height:600px"></div></html>

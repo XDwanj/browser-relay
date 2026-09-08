@@ -163,6 +163,20 @@ Browser Relay 专门为 Agent 工作流做了设计,不只是给底层脚本用:
 
 ## CLI
 
+1.5 新增持久 JavaScript 会话、可访问性元素引用、差量快照和批量动作。
+先用 `browser-relay observe --tab <id>` 获取页面状态，再用
+`browser-relay actions --tab <id> --file actions.json` 一次执行已确定的步骤。
+动作在插件内连续运行，同一标签页串行，支持查看任务及取消后续动作。
+
+`browser-relay exec --file workflow.js` 可运行脚本；MCP 的 `browser_exec`
+会在多次调用间保留变量与标签句柄。MCP 截图直接返回图片。坐标点击、拖拽和悬停
+支持截图坐标映射；需要可见标签页的操作会明确返回 `needs_foreground`。
+插件弹窗提供“取消当前任务”。本地脚本是拥有 Agent 系统权限的可信代码，独立进程
+用于超时与重置，不是安全沙箱；远端浏览器只接收浏览器动作。
+
+参阅 [运行时与 SDK](../skills/browser-relay/references/runtime.md)、
+[Codex 能力对比和实测](browser-use-comparison.md)。
+
 CLI 是首选接口。能执行 shell 的 Agent 用它比手写 `curl` JSON 更快、更少转义:
 
 ```bash

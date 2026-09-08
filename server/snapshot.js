@@ -47,7 +47,7 @@ export const SNAPSHOT_JS = `
       var name = el.getAttribute('name') || '';
       var placeholder = el.getAttribute('placeholder') || '';
       var label = el.getAttribute('aria-label') || '';
-      var val = (el.value || '').slice(0, 80);
+      var val = type === 'password' ? '[redacted]' : (el.value || '').slice(0, 80);
       var desc = '[input type=' + type;
       if (name) desc += ' name="' + name + '"';
       if (placeholder) desc += ' placeholder="' + placeholder + '"';
