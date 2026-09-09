@@ -24,6 +24,7 @@ export async function waitFor(fn, timeout = 10000) {
 export async function setupBrowser({
   headed = false,
   relayLatencyMs = 0,
+  viewport = { width: 1280, height: 1000 },
 } = {}) {
   const dir = await mkdtemp(join(tmpdir(), "browser-relay-e2e-"));
   const ext = join(dir, "extension");
@@ -109,7 +110,7 @@ export async function setupBrowser({
     context = await chromium.launchPersistentContext(join(dir, "profile"), {
       channel: "chromium",
       headless: !headed,
-      viewport: { width: 1280, height: 1000 },
+      viewport,
       args: [`--disable-extensions-except=${ext}`, `--load-extension=${ext}`],
     });
     const page = context.pages()[0] || (await context.newPage());

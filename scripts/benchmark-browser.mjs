@@ -8,13 +8,20 @@ const count = Number(process.env.BROWSER_RELAY_BENCH_RUNS || 7);
 if (!Number.isInteger(count) || count < 1 || count > 30)
   throw new Error("runs must be 1–30");
 const latencyMs = Number(process.env.BROWSER_RELAY_BENCH_RTT_MS || 0);
+const headed = process.env.BROWSER_RELAY_BENCH_HEADED === "1";
+const viewport = {
+  width: Number(process.env.BROWSER_RELAY_BENCH_WIDTH || 1280),
+  height: Number(process.env.BROWSER_RELAY_BENCH_HEIGHT || 1000),
+};
+if (Object.values(viewport).some((n) => !Number.isInteger(n) || n < 1 || n > 16384))
+  throw new Error("viewport dimensions must be integers from 1 to 16384");
 const suite = process.env.BROWSER_RELAY_BENCH_SUITE || "original";
 if (!["original", "balanced"].includes(suite))
   throw new Error("suite must be original or balanced");
 const variants = suite === "balanced"
   ? ["legacy", "legacy-minimal", "actions", "playwright-cdp"]
   : ["legacy", "actions", "playwright-cdp"];
-const env = await setupBrowser({ relayLatencyMs: latencyMs });
+const env = await setupBrowser({ relayLatencyMs: latencyMs, headed, viewport });
 const samples = [];
 try {
   for (let iteration = 0; iteration < count; iteration++) {
@@ -194,7 +201,7 @@ try {
     platform: process.platform,
     node: process.version,
     chromium: env.context.browser()?.version(),
-    headless: true,
+    headless: !headed,
     viewport: env.page.viewportSize(),
     task: "Search invoice / owner Alice / active only; await visible result",
     scope:
@@ -205,7 +212,7 @@ try {
   };
   await mkdir("docs/benchmarks", { recursive: true });
   await writeFile(
-    `docs/benchmarks/browser-runtime${suite === "balanced" ? "-balanced" : ""}${latencyMs ? `-rtt${latencyMs}` : ""}.json`,
+    `docs/benchmarks/browser-runtime${suite === "balanced" ? "-balanced" : ""}${headed ? "-headed" : ""}${latencyMs ? `-rtt${latencyMs}` : ""}.json`,
     JSON.stringify(result, null, 2) + "\n",
   );
   console.log(JSON.stringify({ summary, delta }, null, 2));

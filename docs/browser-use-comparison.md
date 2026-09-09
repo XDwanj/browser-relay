@@ -4,17 +4,17 @@
 
 已补齐图片工具输出、持久 JavaScript 会话、语义和坐标动作、跨进程 iframe、差量快照、
 批量任务与取消，以及本地 Playwright/CDP 接入。最明显的收益来自减少 Agent—Relay—插件
-链路上的逐步往返。9 月 9 日更严格的对照中，相对于只读首尾状态的旧接口流程，新动作批次在
+链路上的逐步往返。9 月 9 日无头浏览器的严格对照中，相对于只读首尾状态的旧接口流程，新动作批次在
 注入 50 ms 往返延迟时由 1702.35 ms 降至 394.4 ms，约快 4.32 倍；本机则由 254.1 ms
 增至 288.05 ms，慢约 13.4%。首轮的 5.47 倍同时包含移除冗余观察的收益。
 
-**Codex 原生浏览器的同题实机计时尚未完成。** 当前会话的 `cua.getState()`、
-`cua.listBrowsers()` 返回空浏览器列表；创建 `iab` 和 `chrome` 都返回
-`Browser is not available`。已请求连接浏览器。以下能力对照来自可核验接口和本机插件发布包；
-性能表中的 Playwright 经 Relay CDP 不是 Codex 的专有浏览器后端，也不是 GPT-6 的模型评测。
+**Codex 原生同题测试已完成。** 用户安装官方扩展后，使用 CUA 连接原生 Chrome 扩展，
+AX 单步、AX 批量、原生 Playwright 各跑 5 次，15 次均成功。中位耗时分别为 902、436、788 ms。
+另补测相同视口的可见 Chromium，Relay actions 中位数 258.4 ms。这里计的是固定任务的内层
+工具执行时间，不能当作整个 Codex 产品或 GPT-6 模型的端到端胜率。详见文末原生实测章节。
 
 9 月 9 日增加了旧接口精简流程和轮换执行顺序，见下方补测。新结果应优先于首轮结果用于判断
-接口本身的收益；不能把 5.47 倍直接归因于新执行器，也不能宣称本机存在加速。
+接口本身的收益；不能把 5.47 倍直接归因于新执行器，也不能宣称相对旧接口在本机普遍存在加速。
 
 ## 核验材料与借鉴范围
 
@@ -216,20 +216,22 @@ Skill 安装会核验入口及所有参考文件，防止只复制 SKILL.md 后�
 所以，目前可以交付的是执行器能力、传输效率和工作流设计的改进。GPT-6 的视觉判断、任务规划、
 网页泛化成功率、模型思考时间和费用，需要相同模型设置的独立 Agent 评测，不能由接口数量推导。
 
-## 待完成的 Codex 实机对照
+## Codex 原生实机对照：已完成
 
-2026-09-09 按用户要求用 CUA 尝试安装官方扩展，实际结果如下；尚未完成安装，也未生成原生任务耗时：
+### 安装过程与已解决的阻塞
+
+2026-09-09 早先按用户要求用 CUA 尝试安装官方扩展，遭遇以下问题。随后用户完成安装，
+本会话成功连接 Chrome 扩展并执行测试。下表是历史诊断，不代表当前仍无法连接：
 
 | 步骤 | 工具结果 | 可得结论 |
 | --- | --- | --- |
-| CUA 发现浏览器 | `browsers: []` | 当前会话没有可用 Browser provider |
+| CUA 发现浏览器 | `browsers: []` | 安装前没有可用 Browser provider |
 | CUA 打开 Codex 自身应用 | `Computer Use is not allowed to use the app 'com.openai.codex' for safety reasons.` | CUA 自身限制，不能代点该应用设置 |
 | CUA 打开 Chrome，尝试两次 | `cgWindowNotFound` | 取不到可操作窗口；不能确认原因就是锁屏 |
 | CUA 打开访达 | `cgWindowNotFound` | 问题也影响其他应用，安装界面未能打开 |
 | 本地官方诊断脚本 | Default profile 没有可读 Preferences；扩展、native host 未检出 | 仅代表检查到的本地文件路径；不排除 CUA 桌面与文件系统或 profile 不一致 |
 
-已请求用户恢复可见 Chrome 窗口。若需要在 Codex 自身设置启用 Browser，则该部分须由用户操作；
-这不是缺少安装授权，也没有尝试绕过 CUA 的应用限制。
+用户安装后 CUA 返回 Chrome extension provider，测试页可正常创建和操作。未尝试绕过 CUA 自身应用限制。
 [官方安装说明](https://learn.chatgpt.com/docs/chrome-extension)
 
 运行 `npm run bench:serve` 可启动同一测试页。完整的同题提示、计时边界、单步/批次流程、
@@ -237,4 +239,89 @@ Skill 安装会核验入口及所有参考文件，防止只复制 SKILL.md 后�
 连接尝试保存在[机器可读状态记录](benchmarks/codex-native-status.json)。原生 Browser、
 原生桌面 Computer Use、Playwright 经 Relay 必须分别标注，不能互相替代。
 
-在取得原生样本前，本报告不声称 Browser Relay 比 Codex Browser Use 更快或更可靠。
+### 实际执行与计时口径
+
+使用 `cua.createBrowserTab('chrome', fixtureUrl, ...)` 新建专用标签，浏览器视口实测为
+1466 × 925。任务与 Relay 完全相同。通过原生 AX 返回的当前索引执行，绝不跨页面重载复用索引；
+每次新试验读取完整初始 AX，后续采用默认差量，按新增、修改、删除的节点维护当前目标。
+
+原生三条路径：
+
+| 路径 | 操作 | 浏览器 API 次数 | 状态读取次数 |
+| --- | --- | ---: | ---: |
+| AX 单步观察 | getAXState；setValue Search + 状态；setValue Owner + 状态；setValue checkbox + 状态；click 提交 + 状态 | 9 | 5 |
+| AX 批量 | getAXState；连续三个 setValue 和 click；最终 getAXState | 6 | 2 |
+| 原生 Playwright | domSnapshot；fill、selectOption、check、click、waitFor 可见结果；domSnapshot | 7 | 2 |
+
+AX 的状态读取已经等待到本题的 120 ms 异步结果，不额外插入固定 sleep。原生 Playwright
+显式等待结果可见；两条路径都要求最后状态包含完整成功文本。
+
+先做各一轮交互式探索：AX 单步 5 次外层 `js`，内层 API 累计 1190 ms，整轮经过 29552 ms。
+后者包含模型决策、工具调度与会话间隔，并非纯浏览器耗时。探索时一次计时闭包因跨 REPL
+重绑定记到了旧数组，批量汇总曾错误显示 0；原始逐操作记录可恢复为 390 ms。随后改为修改
+固定日志对象，解决计时记录问题；两轮探索均不进入正式中位数。
+
+正式数据采用**已验证流程的确定性脚本回放**。AX 两条路径各 5 次，先后顺序逐组交替，
+每个 `js` 执行一组两条路径；原生 Playwright 随后另跑 5 次，未与 AX 随机交错。
+这一步没有让模型在每次状态读取后重新规划，因此适合分析工具执行成本，不能当成 15 次独立模型任务。
+记录每个 API 的开始、结束时间，以及重载之后到最终状态返回的脚本时间；外层工具耗时另列。
+
+### 原生结果及可见浏览器 Relay 对照
+
+Relay 补测使用隔离配置的可见 Chromium 153.0.8010.12，并设同样的 1466 × 925 视口。
+四条 Relay 路径各跑 8 次，循环轮换顺序，32 次全部成功；未注入延迟。
+
+| 实测路径 | 成功 | 内层执行中位 ms | 范围 ms | 状态文本 B |
+| --- | ---: | ---: | --- | ---: |
+| Codex 原生 AX 单步 | 5/5 | 902 | 860–915 | 3287 |
+| Codex 原生 AX 批量 | 5/5 | 436 | 411–443 | 3178 |
+| Codex 原生 Playwright | 5/5 | 788 | 763–816 | 1706 |
+| Relay 旧 HTTP，每步观察，可见 Chromium | 8/8 | 265.25 | 见原始样本 | 2301 |
+| Relay 旧 HTTP，只观察首尾，可见 Chromium | 8/8 | 262.95 | 见原始样本 | 926 |
+| Relay actions，可见 Chromium | 8/8 | 258.4 | 见原始样本 | 2202 |
+| Playwright 经 Relay CDP，可见 Chromium | 8/8 | 264.5 | 见原始样本 | 1425 |
+
+原生逐轮脚本耗时，单位 ms：
+
+- AX 单步：910, 902, 915, 900, 860。第 4 轮 API 累计 899 ms，另有 1 ms 脚本开销。
+- AX 批量：413, 443, 411, 441, 436。
+- 原生 Playwright：816, 813, 780, 788, 763。
+
+原生 AX 合并动作后约快 **2.07 倍**，减少约 **51.7%** 时间；状态字节只减少 **3.3%**，
+因为该题批量修改后返回了完整 AX，而逐步修改可返回差量。不能把少读三次状态理解成少三份全量快照。
+
+这道题的 Relay actions 内层时间比原生 AX 批量低约 **40.7%**（258.4 对 436 ms，约 1.69 倍速度比）。
+这个数值有明确限制：原生是用户 Chrome 配置，Relay 是隔离 Chromium；原生 Chrome 版本读取被
+浏览器 URL 策略阻止，版本记为 unknown，没有通过其他通路绕过；浏览器后端和快照内容也不完全相同。
+它是本机该固定任务的描述性对照，不能宣称普遍比 Codex 快 1.69 倍。
+
+原生 API 计时不含外层 MCP/工具调度，Relay 的 HTTP 计时也不含外层 Agent 工具调用。
+原生每组两个 AX 回放的外层 `js` 约 3.8–5.0 秒，包含重载、两个任务、工具调度，不能拿这个数字
+直接除以 Relay 单题 258 ms。相关外层观测已保存在原始 JSON。模型配置、token 和实际费用未测，
+也没有在 Codex 原生链路中注入对应的 50 ms 延迟。
+
+### 能力实测与可吸收的经验
+
+除了 15 次表单任务，还在同一原生标签上完成：
+
+- AX 直接点击 Shadow DOM 按钮：显示 `Shadow done`。
+- AX 分别点击同源和跨域 iframe 按钮：节点 34、37 均显示 `Frame done`。
+- 根据原生截图，在画布可见绿色目标内坐标点击：显示 `Canvas done`。
+- 根据同一截图拖动蓝色方块：显示 `Drag done`。
+
+因此，表单、Shadow DOM、同源/跨域 iframe、截图坐标和拖拽现在都有原生实测证据。
+原生取消、文件对话框、下载、多标签并发、生产复杂站点仍未进行对等实测，不能称为全面能力等价。
+
+对项目的直接启示是：简单控件优先 AX/ref；把已经确定的填写与点击合并；读取状态按决策需要安排。
+本次原生 AX 状态获取约 157–200 ms，批量后的两次状态获取占了主要时间。
+原生 Playwright 的 check/click 各约 272–292 ms，占该路径的大部分时间；计时只定位到 API，
+没有核实其内部开销原因。保留 Playwright 用于复杂定位与开发集成，不应把它当成短任务必然更快的路径。
+
+- [原生 15 次逐操作计时、完整去重状态和能力结果](benchmarks/codex-native.json)
+- [Relay 可见浏览器 32 次原始数据](benchmarks/browser-runtime-balanced-headed.json)
+
+可见浏览器 Relay 复跑命令：
+
+```bash
+BROWSER_RELAY_BENCH_SUITE=balanced BROWSER_RELAY_BENCH_RUNS=8 BROWSER_RELAY_BENCH_HEADED=1 BROWSER_RELAY_BENCH_WIDTH=1466 BROWSER_RELAY_BENCH_HEIGHT=925 npm run bench:browser
+```

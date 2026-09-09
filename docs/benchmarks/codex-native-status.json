@@ -1,8 +1,8 @@
 {
   "recordedAt": "2026-09-08T19:22:52.183134+00:00",
-  "status": "not_run",
-  "installationCompleted": false,
-  "nativeBrowserSamples": [],
+  "status": "completed",
+  "installationCompleted": true,
+  "nativeBrowserSamples": 15,
   "attempts": [
     {
       "date": "2026-09-08",
@@ -37,10 +37,31 @@
       "date": "2026-09-09",
       "operation": "cua.getApp(\"com.apple.finder\")",
       "result": "Computer Use server error -10005: cgWindowNotFound"
+    },
+    {
+      "date": "2026-09-09",
+      "operation": "cua.getState() after user installed extension",
+      "result": {
+        "connectedBrowserFamily": "chrome",
+        "browserType": "extension"
+      }
+    },
+    {
+      "date": "2026-09-09",
+      "operation": "same fixture AX single / AX batch / native Playwright",
+      "result": {
+        "runs": 15,
+        "successes": 15
+      }
+    },
+    {
+      "date": "2026-09-09",
+      "operation": "read browser version via chrome://version",
+      "result": "Blocked by Browser Use URL policy; version recorded as null, no workaround attempted."
     }
   ],
   "localDiagnostics": {
-    "scope": "Default Chrome profile at the local filesystem path; not confirmation of the profile or filesystem visible to the CUA desktop service",
+    "scope": "Default Chrome profile at the local filesystem path; not confirmation of the profile or filesystem visible to the CUA desktop service; these earlier negative filesystem checks did not prevent successful CUA connection after user installation.",
     "extensionCheck": {
       "installed": false,
       "enabled": false,
@@ -52,6 +73,9 @@
     },
     "extensionId": "hehggadaopoacecdllhhajmbjkdcmajg"
   },
-  "nextRequiredState": "A visible operable Chrome window; if necessary the user enables the browser from desktop application settings because CUA prohibits controlling its own app.",
-  "protocol": "codex-native-protocol.md"
+  "nextRequiredState": null,
+  "protocol": "codex-native-protocol.md",
+  "installationPerformedBy": "user",
+  "connectedAt": "2026-09-09",
+  "nativeBrowserResults": "codex-native.json"
 }

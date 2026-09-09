@@ -1,0 +1,1003 @@
+{
+  "measuredAt": "2026-09-09T05:51:09.202Z",
+  "backend": "Codex native Chrome extension through mcp__cua_repl",
+  "viewport": {
+    "height": 925,
+    "width": 1466
+  },
+  "browserVersion": null,
+  "browserVersionReason": "chrome://version was blocked by Browser Use URL policy; no workaround attempted",
+  "headless": false,
+  "scope": "Deterministic replay of a discovered same-page task; inner browser API and script timings exclude model inference and outer tool dispatch; not a blinded model evaluation",
+  "outerInvocations": [
+    {
+      "id": "pair-0",
+      "wallMs": 4765.2
+    },
+    {
+      "id": "pair-1",
+      "wallMs": 5000.4
+    },
+    {
+      "id": "pair-2",
+      "wallMs": 4022.2
+    },
+    {
+      "id": "pair-3",
+      "wallMs": 3756.3
+    },
+    {
+      "id": "pair-4",
+      "wallMs": 4012.9
+    },
+    {
+      "id": "pw-0",
+      "wallMs": 9872.3
+    },
+    {
+      "id": "pw-remaining",
+      "wallMs": 8041.9
+    }
+  ],
+  "outerTimingScope": "Each outer invocation includes reload/setup and sometimes multiple trials; it is NOT a single-task latency sample. Raw timing from CUA tool result.",
+  "discovery": {
+    "single": {
+      "success": true,
+      "toolApiMs": 1190,
+      "sessionElapsedMs": 29552,
+      "jsCalls": 5,
+      "apiCalls": 9,
+      "observations": 5,
+      "operationTimesMs": [
+        163,
+        29,
+        177,
+        19,
+        172,
+        12,
+        163,
+        285,
+        170
+      ]
+    },
+    "batch": {
+      "success": true,
+      "toolApiMsRecovered": 390,
+      "sessionElapsedMs": 11990,
+      "jsCalls": 2,
+      "operationTimesMsRecovered": [
+        169,
+        28,
+        5,
+        6,
+        17,
+        165
+      ]
+    },
+    "excludedFromSummary": true,
+    "note": "Initial batch logging reported zero because a cross-REPL variable rebind did not update a closure capture. Recovered operation times from the cumulative trace; then changed instrumentation to mutate a stable object. Both interactive discovery runs excluded from replay summaries."
+  },
+  "summary": {
+    "ax-single": {
+      "runs": 5,
+      "successes": 5,
+      "scriptElapsedMs": 902,
+      "toolApiMs": 902,
+      "stateBytes": 3287,
+      "apiCalls": 9,
+      "observations": 5
+    },
+    "ax-batch": {
+      "runs": 5,
+      "successes": 5,
+      "scriptElapsedMs": 436,
+      "toolApiMs": 436,
+      "stateBytes": 3178,
+      "apiCalls": 6,
+      "observations": 2
+    },
+    "native-playwright": {
+      "runs": 5,
+      "successes": 5,
+      "scriptElapsedMs": 788,
+      "toolApiMs": 788,
+      "stateBytes": 1706,
+      "apiCalls": 7,
+      "observations": 2
+    }
+  },
+  "stateDictionary": [
+    "Browser tab: 395359752, Title: \"Browser Relay benchmark\", URL: \"http://127.0.0.1:61427/\".\n1 AXWebArea Browser Relay benchmark, URL: 127.0.0.1:61427/\n\t2 heading Browser Relay benchmark, Value: 1\n\t\t3 text Browser Relay benchmark\n\t4 container form\n\t\t5 container\n\t\t\t6 text Search \n\t\t\t7 text field (settable) Search \n\t\t8 container\n\t\t\t9 text Owner \n\t\t\t10 pop up button (collapsed, settable) Owner , Value: All, Secondary Actions: Expand\n\t\t\t\t11 menu\n\t\t\t\t\t12 (selected) All\n\t\t\t\t\t13 Alice\n\t\t14 checkbox (settable, integer) Description:  Active only, Value: 0\n\t\t15 button Search records\n\t16 text Ready\n\t17 button Add row, ID: add\n\t18 content list rows\n\t\t19 container\n\t\t\t20 AXListMarker • \n\t\t\t21 text Initial row\n\t22 container Draft\n\t\t23 text Draft\n\t\t24 button Save\n\t25 container Published\n\t\t26 text Published\n\t\t27 button Save\n\t28 container\n\t\t29 text Password \n\t\t30 text field (settable) Password \n\t31 button Shadow action\n\t32 container Same origin frame\n\t\t33 AXWebArea Frame, URL: 127.0.0.1:61427/frame\n\t\t\t34 button Frame action\n\t35 container Description: Cross origin frame, ID: cross\n\t\t36 AXWebArea Frame, URL: localhost:61427/frame?cross=1\n\t\t\t37 button Cross frame\n\t38 image Description: Drawing surface, ID: canvas\n\t39 text Canvas untouched\n\t40 container Description: Drag handle, ID: drag\n\t41 text Not dragged\n\t42 container Description: Scrollable panel, ID: scrollbox\n\t\t43 text Panel start\n\t\t44 button Panel end\n\t45 button Show delayed, ID: delayed\n\t46 button (disabled) Disabled action, ID: disabled\n\nThe focused UI element is 1 AXWebArea Browser Relay benchmark, URL: 127.0.0.1:61427/",
+    "Browser tab: 395359752, Title: \"Browser Relay benchmark\", URL: \"http://127.0.0.1:61427/\".\nThe following is a diff from the previous accessibility tree with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.\n~\t\t\t7 text field (settable) Search , Value: invoice\nThe focused UI element is 7 text field (settable) Search , Value: invoice",
+    "Browser tab: 395359752, Title: \"Browser Relay benchmark\", URL: \"http://127.0.0.1:61427/\".\nThe following is a diff from the previous accessibility tree with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.\n~\t\t\t10 pop up button (collapsed, settable) Owner , Value: Alice, Secondary Actions: Expand\n~\t\t\t\t\t12 All\n~\t\t\t\t\t13 (selected) Alice\nThe focused UI element is 10 pop up button (collapsed, settable) Owner , Value: Alice, Secondary Actions: Expand",
+    "Browser tab: 395359752, Title: \"Browser Relay benchmark\", URL: \"http://127.0.0.1:61427/\".\nThe following is a diff from the previous accessibility tree with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.\n~\t\t14 checkbox (settable, integer) Description:  Active only, Value: 1\nThe focused UI element is 14 checkbox (settable, integer) Description:  Active only, Value: 1",
+    "Browser tab: 395359752, Title: \"Browser Relay benchmark\", URL: \"http://127.0.0.1:61427/\".\nThe following is a diff from the previous accessibility tree with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.\nRemoved element IDs: 16\n+\t47 text Found: invoice / alice / active\nThe focused UI element is 15 button Search records",
+    "Browser tab: 395359752, Title: \"Browser Relay benchmark\", URL: \"http://127.0.0.1:61427/\".\n1 AXWebArea Browser Relay benchmark, URL: 127.0.0.1:61427/\n\t2 heading Browser Relay benchmark, Value: 1\n\t\t3 text Browser Relay benchmark\n\t4 container form\n\t\t5 container\n\t\t\t6 text Search \n\t\t\t7 text field (settable) Search , Value: invoice\n\t\t8 container\n\t\t\t9 text Owner \n\t\t\t10 pop up button (collapsed, settable) Owner , Value: Alice, Secondary Actions: Expand\n\t\t\t\t11 menu\n\t\t\t\t\t12 All\n\t\t\t\t\t13 (selected) Alice\n\t\t14 checkbox (settable, integer) Description:  Active only, Value: 1\n\t\t15 button Search records\n\t47 text Found: invoice / alice / active\n\t17 button Add row, ID: add\n\t18 content list rows\n\t\t19 container\n\t\t\t20 AXListMarker • \n\t\t\t21 text Initial row\n\t22 container Draft\n\t\t23 text Draft\n\t\t24 button Save\n\t25 container Published\n\t\t26 text Published\n\t\t27 button Save\n\t28 container\n\t\t29 text Password \n\t\t30 text field (settable) Password \n\t31 button Shadow action\n\t32 container Same origin frame\n\t\t33 AXWebArea Frame, URL: 127.0.0.1:61427/frame\n\t\t\t34 button Frame action\n\t35 container Description: Cross origin frame, ID: cross\n\t\t36 AXWebArea Frame, URL: localhost:61427/frame?cross=1\n\t\t\t37 button Cross frame\n\t38 image Description: Drawing surface, ID: canvas\n\t39 text Canvas untouched\n\t40 container Description: Drag handle, ID: drag\n\t41 text Not dragged\n\t42 container Description: Scrollable panel, ID: scrollbox\n\t\t43 text Panel start\n\t\t44 button Panel end\n\t45 button Show delayed, ID: delayed\n\t46 button (disabled) Disabled action, ID: disabled\n\nThe focused UI element is 15 button Search records",
+    "- heading \"Browser Relay benchmark\" [level=1]\n- text: Search\n- textbox \"Search\"\n- text: Owner\n- combobox \"Owner\":\n  - option \"All\" [selected]\n  - option \"Alice\"\n- checkbox \"Active only\"\n- text: Active only\n- button \"Search records\"\n- status: Ready\n- button \"Add row\"\n- list:\n  - listitem: Initial row\n- group \"Draft\":\n  - generic: Draft\n  - button \"Save\"\n- group \"Published\":\n  - generic: Published\n  - button \"Save\"\n- text: Password\n- textbox \"Password\"\n- button \"Shadow action\"\n- iframe:\n  - button \"Frame action\"\n- iframe [id=\"cross\"]:\n  - button \"Cross frame\"\n- paragraph:\n  - generic \"Drawing surface\"\n- paragraph: Canvas untouched\n- generic \"Drag handle\"\n- paragraph: Not dragged\n- generic \"Scrollable panel\":\n  - generic: Panel start\n  - button \"Panel end\"\n- button \"Show delayed\"\n- button \"Disabled action\" [disabled]",
+    "- heading \"Browser Relay benchmark\" [level=1]\n- text: Search\n- textbox \"Search\": invoice\n- text: Owner\n- combobox \"Owner\":\n  - option \"All\"\n  - option \"Alice\" [selected]\n- checkbox \"Active only\" [checked]\n- text: Active only\n- button \"Search records\" [active]\n- status: \"Found: invoice / alice / active\"\n- button \"Add row\"\n- list:\n  - listitem: Initial row\n- group \"Draft\":\n  - generic: Draft\n  - button \"Save\"\n- group \"Published\":\n  - generic: Published\n  - button \"Save\"\n- text: Password\n- textbox \"Password\"\n- button \"Shadow action\"\n- iframe:\n  - button \"Frame action\"\n- iframe [id=\"cross\"]:\n  - button \"Cross frame\"\n- paragraph:\n  - generic \"Drawing surface\"\n- paragraph: Canvas untouched\n- generic \"Drag handle\"\n- paragraph: Not dragged\n- generic \"Scrollable panel\":\n  - generic: Panel start\n  - button \"Panel end\"\n- button \"Show delayed\"\n- button \"Disabled action\" [disabled]"
+  ],
+  "samples": [
+    {
+      "variant": "ax-single",
+      "iteration": 0,
+      "invocation": "pair-0",
+      "phase": "deterministic-replay",
+      "success": true,
+      "scriptElapsedMs": 910,
+      "toolApiMs": 910,
+      "stateBytes": 3287,
+      "apiCalls": 9,
+      "observations": 5,
+      "steps": [
+        {
+          "operation": "getAXState",
+          "elapsedMs": 160,
+          "success": true,
+          "stateId": 0,
+          "stateBytes": 1584
+        },
+        {
+          "operation": "setValue(Search)",
+          "elapsedMs": 19,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 172,
+          "success": true,
+          "stateId": 1,
+          "stateBytes": 389
+        },
+        {
+          "operation": "setValue(Owner)",
+          "elapsedMs": 23,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 183,
+          "success": true,
+          "stateId": 2,
+          "stateBytes": 506
+        },
+        {
+          "operation": "setValue(Active)",
+          "elapsedMs": 5,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 164,
+          "success": true,
+          "stateId": 3,
+          "stateBytes": 428
+        },
+        {
+          "operation": "click(Search records)",
+          "elapsedMs": 13,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 171,
+          "success": true,
+          "stateId": 4,
+          "stateBytes": 380
+        }
+      ]
+    },
+    {
+      "variant": "ax-batch",
+      "iteration": 0,
+      "invocation": "pair-0",
+      "phase": "deterministic-replay",
+      "success": true,
+      "scriptElapsedMs": 413,
+      "toolApiMs": 413,
+      "stateBytes": 3178,
+      "apiCalls": 6,
+      "observations": 2,
+      "steps": [
+        {
+          "operation": "getAXState",
+          "elapsedMs": 166,
+          "success": true,
+          "stateId": 0,
+          "stateBytes": 1584
+        },
+        {
+          "operation": "setValue(Search)",
+          "elapsedMs": 15,
+          "success": true
+        },
+        {
+          "operation": "setValue(Owner)",
+          "elapsedMs": 6,
+          "success": true
+        },
+        {
+          "operation": "setValue(Active)",
+          "elapsedMs": 26,
+          "success": true
+        },
+        {
+          "operation": "click(Search records)",
+          "elapsedMs": 33,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 167,
+          "success": true,
+          "stateId": 5,
+          "stateBytes": 1594
+        }
+      ]
+    },
+    {
+      "variant": "ax-batch",
+      "iteration": 1,
+      "invocation": "pair-1",
+      "phase": "deterministic-replay",
+      "success": true,
+      "scriptElapsedMs": 443,
+      "toolApiMs": 443,
+      "stateBytes": 3178,
+      "apiCalls": 6,
+      "observations": 2,
+      "steps": [
+        {
+          "operation": "getAXState",
+          "elapsedMs": 181,
+          "success": true,
+          "stateId": 0,
+          "stateBytes": 1584
+        },
+        {
+          "operation": "setValue(Search)",
+          "elapsedMs": 29,
+          "success": true
+        },
+        {
+          "operation": "setValue(Owner)",
+          "elapsedMs": 12,
+          "success": true
+        },
+        {
+          "operation": "setValue(Active)",
+          "elapsedMs": 7,
+          "success": true
+        },
+        {
+          "operation": "click(Search records)",
+          "elapsedMs": 40,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 174,
+          "success": true,
+          "stateId": 5,
+          "stateBytes": 1594
+        }
+      ]
+    },
+    {
+      "variant": "ax-single",
+      "iteration": 1,
+      "invocation": "pair-1",
+      "phase": "deterministic-replay",
+      "success": true,
+      "scriptElapsedMs": 902,
+      "toolApiMs": 902,
+      "stateBytes": 3287,
+      "apiCalls": 9,
+      "observations": 5,
+      "steps": [
+        {
+          "operation": "getAXState",
+          "elapsedMs": 165,
+          "success": true,
+          "stateId": 0,
+          "stateBytes": 1584
+        },
+        {
+          "operation": "setValue(Search)",
+          "elapsedMs": 25,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 200,
+          "success": true,
+          "stateId": 1,
+          "stateBytes": 389
+        },
+        {
+          "operation": "setValue(Owner)",
+          "elapsedMs": 8,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 157,
+          "success": true,
+          "stateId": 2,
+          "stateBytes": 506
+        },
+        {
+          "operation": "setValue(Active)",
+          "elapsedMs": 7,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 160,
+          "success": true,
+          "stateId": 3,
+          "stateBytes": 428
+        },
+        {
+          "operation": "click(Search records)",
+          "elapsedMs": 12,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 168,
+          "success": true,
+          "stateId": 4,
+          "stateBytes": 380
+        }
+      ]
+    },
+    {
+      "variant": "ax-single",
+      "iteration": 2,
+      "invocation": "pair-2",
+      "phase": "deterministic-replay",
+      "success": true,
+      "scriptElapsedMs": 915,
+      "toolApiMs": 915,
+      "stateBytes": 3287,
+      "apiCalls": 9,
+      "observations": 5,
+      "steps": [
+        {
+          "operation": "getAXState",
+          "elapsedMs": 172,
+          "success": true,
+          "stateId": 0,
+          "stateBytes": 1584
+        },
+        {
+          "operation": "setValue(Search)",
+          "elapsedMs": 29,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 171,
+          "success": true,
+          "stateId": 1,
+          "stateBytes": 389
+        },
+        {
+          "operation": "setValue(Owner)",
+          "elapsedMs": 15,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 163,
+          "success": true,
+          "stateId": 2,
+          "stateBytes": 506
+        },
+        {
+          "operation": "setValue(Active)",
+          "elapsedMs": 6,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 163,
+          "success": true,
+          "stateId": 3,
+          "stateBytes": 428
+        },
+        {
+          "operation": "click(Search records)",
+          "elapsedMs": 20,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 176,
+          "success": true,
+          "stateId": 4,
+          "stateBytes": 380
+        }
+      ]
+    },
+    {
+      "variant": "ax-batch",
+      "iteration": 2,
+      "invocation": "pair-2",
+      "phase": "deterministic-replay",
+      "success": true,
+      "scriptElapsedMs": 411,
+      "toolApiMs": 411,
+      "stateBytes": 3178,
+      "apiCalls": 6,
+      "observations": 2,
+      "steps": [
+        {
+          "operation": "getAXState",
+          "elapsedMs": 163,
+          "success": true,
+          "stateId": 0,
+          "stateBytes": 1584
+        },
+        {
+          "operation": "setValue(Search)",
+          "elapsedMs": 23,
+          "success": true
+        },
+        {
+          "operation": "setValue(Owner)",
+          "elapsedMs": 16,
+          "success": true
+        },
+        {
+          "operation": "setValue(Active)",
+          "elapsedMs": 15,
+          "success": true
+        },
+        {
+          "operation": "click(Search records)",
+          "elapsedMs": 22,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 172,
+          "success": true,
+          "stateId": 5,
+          "stateBytes": 1594
+        }
+      ]
+    },
+    {
+      "variant": "ax-batch",
+      "iteration": 3,
+      "invocation": "pair-3",
+      "phase": "deterministic-replay",
+      "success": true,
+      "scriptElapsedMs": 441,
+      "toolApiMs": 441,
+      "stateBytes": 3178,
+      "apiCalls": 6,
+      "observations": 2,
+      "steps": [
+        {
+          "operation": "getAXState",
+          "elapsedMs": 175,
+          "success": true,
+          "stateId": 0,
+          "stateBytes": 1584
+        },
+        {
+          "operation": "setValue(Search)",
+          "elapsedMs": 27,
+          "success": true
+        },
+        {
+          "operation": "setValue(Owner)",
+          "elapsedMs": 14,
+          "success": true
+        },
+        {
+          "operation": "setValue(Active)",
+          "elapsedMs": 7,
+          "success": true
+        },
+        {
+          "operation": "click(Search records)",
+          "elapsedMs": 46,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 172,
+          "success": true,
+          "stateId": 5,
+          "stateBytes": 1594
+        }
+      ]
+    },
+    {
+      "variant": "ax-single",
+      "iteration": 3,
+      "invocation": "pair-3",
+      "phase": "deterministic-replay",
+      "success": true,
+      "scriptElapsedMs": 900,
+      "toolApiMs": 899,
+      "stateBytes": 3287,
+      "apiCalls": 9,
+      "observations": 5,
+      "steps": [
+        {
+          "operation": "getAXState",
+          "elapsedMs": 166,
+          "success": true,
+          "stateId": 0,
+          "stateBytes": 1584
+        },
+        {
+          "operation": "setValue(Search)",
+          "elapsedMs": 24,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 166,
+          "success": true,
+          "stateId": 1,
+          "stateBytes": 389
+        },
+        {
+          "operation": "setValue(Owner)",
+          "elapsedMs": 29,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 164,
+          "success": true,
+          "stateId": 2,
+          "stateBytes": 506
+        },
+        {
+          "operation": "setValue(Active)",
+          "elapsedMs": 8,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 162,
+          "success": true,
+          "stateId": 3,
+          "stateBytes": 428
+        },
+        {
+          "operation": "click(Search records)",
+          "elapsedMs": 14,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 166,
+          "success": true,
+          "stateId": 4,
+          "stateBytes": 380
+        }
+      ]
+    },
+    {
+      "variant": "ax-single",
+      "iteration": 4,
+      "invocation": "pair-4",
+      "phase": "deterministic-replay",
+      "success": true,
+      "scriptElapsedMs": 860,
+      "toolApiMs": 860,
+      "stateBytes": 3287,
+      "apiCalls": 9,
+      "observations": 5,
+      "steps": [
+        {
+          "operation": "getAXState",
+          "elapsedMs": 167,
+          "success": true,
+          "stateId": 0,
+          "stateBytes": 1584
+        },
+        {
+          "operation": "setValue(Search)",
+          "elapsedMs": 20,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 163,
+          "success": true,
+          "stateId": 1,
+          "stateBytes": 389
+        },
+        {
+          "operation": "setValue(Owner)",
+          "elapsedMs": 7,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 160,
+          "success": true,
+          "stateId": 2,
+          "stateBytes": 506
+        },
+        {
+          "operation": "setValue(Active)",
+          "elapsedMs": 5,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 161,
+          "success": true,
+          "stateId": 3,
+          "stateBytes": 428
+        },
+        {
+          "operation": "click(Search records)",
+          "elapsedMs": 13,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 164,
+          "success": true,
+          "stateId": 4,
+          "stateBytes": 380
+        }
+      ]
+    },
+    {
+      "variant": "ax-batch",
+      "iteration": 4,
+      "invocation": "pair-4",
+      "phase": "deterministic-replay",
+      "success": true,
+      "scriptElapsedMs": 436,
+      "toolApiMs": 436,
+      "stateBytes": 3178,
+      "apiCalls": 6,
+      "observations": 2,
+      "steps": [
+        {
+          "operation": "getAXState",
+          "elapsedMs": 162,
+          "success": true,
+          "stateId": 0,
+          "stateBytes": 1584
+        },
+        {
+          "operation": "setValue(Search)",
+          "elapsedMs": 27,
+          "success": true
+        },
+        {
+          "operation": "setValue(Owner)",
+          "elapsedMs": 18,
+          "success": true
+        },
+        {
+          "operation": "setValue(Active)",
+          "elapsedMs": 16,
+          "success": true
+        },
+        {
+          "operation": "click(Search records)",
+          "elapsedMs": 35,
+          "success": true
+        },
+        {
+          "operation": "getAXState",
+          "elapsedMs": 178,
+          "success": true,
+          "stateId": 5,
+          "stateBytes": 1594
+        }
+      ]
+    },
+    {
+      "variant": "native-playwright",
+      "iteration": 0,
+      "invocation": "pw-0",
+      "phase": "deterministic-replay",
+      "success": true,
+      "scriptElapsedMs": 816,
+      "toolApiMs": 816,
+      "stateBytes": 1706,
+      "apiCalls": 7,
+      "observations": 2,
+      "steps": [
+        {
+          "operation": "domSnapshot",
+          "elapsedMs": 94,
+          "success": true,
+          "stateId": 6,
+          "stateBytes": 825
+        },
+        {
+          "operation": "fill(Search)",
+          "elapsedMs": 35,
+          "success": true
+        },
+        {
+          "operation": "selectOption(Owner)",
+          "elapsedMs": 15,
+          "success": true
+        },
+        {
+          "operation": "check(Active)",
+          "elapsedMs": 280,
+          "success": true
+        },
+        {
+          "operation": "click(Search records)",
+          "elapsedMs": 272,
+          "success": true
+        },
+        {
+          "operation": "waitFor(result)",
+          "elapsedMs": 110,
+          "success": true
+        },
+        {
+          "operation": "domSnapshot",
+          "elapsedMs": 10,
+          "success": true,
+          "stateId": 7,
+          "stateBytes": 881
+        }
+      ]
+    },
+    {
+      "variant": "native-playwright",
+      "iteration": 1,
+      "invocation": "pw-remaining",
+      "phase": "deterministic-replay",
+      "success": true,
+      "scriptElapsedMs": 813,
+      "toolApiMs": 813,
+      "stateBytes": 1706,
+      "apiCalls": 7,
+      "observations": 2,
+      "steps": [
+        {
+          "operation": "domSnapshot",
+          "elapsedMs": 84,
+          "success": true,
+          "stateId": 6,
+          "stateBytes": 825
+        },
+        {
+          "operation": "fill(Search)",
+          "elapsedMs": 37,
+          "success": true
+        },
+        {
+          "operation": "selectOption(Owner)",
+          "elapsedMs": 7,
+          "success": true
+        },
+        {
+          "operation": "check(Active)",
+          "elapsedMs": 292,
+          "success": true
+        },
+        {
+          "operation": "click(Search records)",
+          "elapsedMs": 273,
+          "success": true
+        },
+        {
+          "operation": "waitFor(result)",
+          "elapsedMs": 109,
+          "success": true
+        },
+        {
+          "operation": "domSnapshot",
+          "elapsedMs": 11,
+          "success": true,
+          "stateId": 7,
+          "stateBytes": 881
+        }
+      ]
+    },
+    {
+      "variant": "native-playwright",
+      "iteration": 2,
+      "invocation": "pw-remaining",
+      "phase": "deterministic-replay",
+      "success": true,
+      "scriptElapsedMs": 780,
+      "toolApiMs": 780,
+      "stateBytes": 1706,
+      "apiCalls": 7,
+      "observations": 2,
+      "steps": [
+        {
+          "operation": "domSnapshot",
+          "elapsedMs": 83,
+          "success": true,
+          "stateId": 6,
+          "stateBytes": 825
+        },
+        {
+          "operation": "fill(Search)",
+          "elapsedMs": 8,
+          "success": true
+        },
+        {
+          "operation": "selectOption(Owner)",
+          "elapsedMs": 7,
+          "success": true
+        },
+        {
+          "operation": "check(Active)",
+          "elapsedMs": 276,
+          "success": true
+        },
+        {
+          "operation": "click(Search records)",
+          "elapsedMs": 285,
+          "success": true
+        },
+        {
+          "operation": "waitFor(result)",
+          "elapsedMs": 110,
+          "success": true
+        },
+        {
+          "operation": "domSnapshot",
+          "elapsedMs": 11,
+          "success": true,
+          "stateId": 7,
+          "stateBytes": 881
+        }
+      ]
+    },
+    {
+      "variant": "native-playwright",
+      "iteration": 3,
+      "invocation": "pw-remaining",
+      "phase": "deterministic-replay",
+      "success": true,
+      "scriptElapsedMs": 788,
+      "toolApiMs": 788,
+      "stateBytes": 1706,
+      "apiCalls": 7,
+      "observations": 2,
+      "steps": [
+        {
+          "operation": "domSnapshot",
+          "elapsedMs": 80,
+          "success": true,
+          "stateId": 6,
+          "stateBytes": 825
+        },
+        {
+          "operation": "fill(Search)",
+          "elapsedMs": 19,
+          "success": true
+        },
+        {
+          "operation": "selectOption(Owner)",
+          "elapsedMs": 13,
+          "success": true
+        },
+        {
+          "operation": "check(Active)",
+          "elapsedMs": 279,
+          "success": true
+        },
+        {
+          "operation": "click(Search records)",
+          "elapsedMs": 276,
+          "success": true
+        },
+        {
+          "operation": "waitFor(result)",
+          "elapsedMs": 108,
+          "success": true
+        },
+        {
+          "operation": "domSnapshot",
+          "elapsedMs": 13,
+          "success": true,
+          "stateId": 7,
+          "stateBytes": 881
+        }
+      ]
+    },
+    {
+      "variant": "native-playwright",
+      "iteration": 4,
+      "invocation": "pw-remaining",
+      "phase": "deterministic-replay",
+      "success": true,
+      "scriptElapsedMs": 763,
+      "toolApiMs": 763,
+      "stateBytes": 1706,
+      "apiCalls": 7,
+      "observations": 2,
+      "steps": [
+        {
+          "operation": "domSnapshot",
+          "elapsedMs": 80,
+          "success": true,
+          "stateId": 6,
+          "stateBytes": 825
+        },
+        {
+          "operation": "fill(Search)",
+          "elapsedMs": 8,
+          "success": true
+        },
+        {
+          "operation": "selectOption(Owner)",
+          "elapsedMs": 7,
+          "success": true
+        },
+        {
+          "operation": "check(Active)",
+          "elapsedMs": 276,
+          "success": true
+        },
+        {
+          "operation": "click(Search records)",
+          "elapsedMs": 274,
+          "success": true
+        },
+        {
+          "operation": "waitFor(result)",
+          "elapsedMs": 109,
+          "success": true
+        },
+        {
+          "operation": "domSnapshot",
+          "elapsedMs": 9,
+          "success": true,
+          "stateId": 7,
+          "stateBytes": 881
+        }
+      ]
+    }
+  ],
+  "capabilityChecks": {
+    "shadowDom": true,
+    "sameOriginFrame": true,
+    "crossOriginFrame": true,
+    "completedFrameNodeIds": [
+      34,
+      37
+    ],
+    "frameObservation": "Browser tab: 395359752, Title: \"Browser Relay benchmark\", URL: \"http://127.0.0.1:61427/\".\nThe following is a diff from the previous accessibility tree with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.\n~\t31 button Shadow done\n~\t\t\t34 button Frame done\n~\t\t\t37 button Frame done\nThe focused UI element is 37 button Frame done",
+    "screenshotCoordinateClick": {
+      "success": true,
+      "point": [
+        174,
+        575
+      ],
+      "expectedText": "Canvas done"
+    },
+    "drag": {
+      "success": true,
+      "from": [
+        54,
+        694
+      ],
+      "to": [
+        175,
+        694
+      ],
+      "expectedText": "Drag done"
+    },
+    "visualObservation": "Browser tab: 395359752, Title: \"Browser Relay benchmark\", URL: \"http://127.0.0.1:61427/\".\nThe following is a diff from the previous accessibility tree with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.\nRemoved element IDs: 39, 41\n+\t47 text Canvas done\n+\t48 text Drag done\nThe focused UI element is 1 AXWebArea Browser Relay benchmark, URL: 127.0.0.1:61427/",
+    "scope": "Untimed additional capability checks; coordinates derived from a fresh screenshot after the frame interactions."
+  }
+}
