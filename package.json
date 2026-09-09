@@ -27,6 +27,7 @@
     "README.md",
     "docs/README.zh-CN.md",
     "docs/browser-use-comparison.md",
+    "docs/browser-use-gap-audit.md",
     "docs/benchmarks/"
   ],
   "scripts": {

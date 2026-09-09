@@ -1,0 +1,418 @@
+{
+  "measuredAt": "2026-09-09T06:34:55.796Z",
+  "backend": "Codex Browser Use via CUA AX",
+  "scope": "Primary comparison. Interactive AX workflows on the local fixture. Session wall times excluded: research/tool scheduling intervals are uncontrolled. API time is descriptive only, one workflow trace per case, not a latency benchmark.",
+  "samples": [
+    {
+      "case": "delayed-enabled",
+      "backend": "codex-browser-use-ax",
+      "steps": [
+        {
+          "operation": "observe",
+          "elapsedMs": 118,
+          "state": "\t4 text Case: delayed-enabled\n\t5 container\n\t\t6 button Start enabling, ID: enable-start\n\t\t7 button (disabled) Delayed action, ID: enabled-target\n\t8 text Ready"
+        },
+        {
+          "operation": "Start enabling",
+          "elapsedMs": 17,
+          "error": null
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 154,
+          "state": "\t4 text Case: delayed-enabled\n\t5 container\n\t\t6 button Start enabling, ID: enable-start\n\t\t7 button (disabled) Delayed action, ID: enabled-target\n\t8 text Enabling"
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 24,
+          "state": "\t4 text Case: delayed-enabled\n\t5 container\n\t\t6 button Start enabling, ID: enable-start\n\t\t7 button Delayed action, ID: enabled-target\n\t8 text Enabling"
+        },
+        {
+          "operation": "Delayed action",
+          "elapsedMs": 14,
+          "error": null
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 156,
+          "state": "\t4 text Case: delayed-enabled\n\t5 container\n\t\t6 button Start enabling, ID: enable-start\n\t\t7 button Delayed action, ID: enabled-target\n\t8 text Enabled done"
+        }
+      ],
+      "outerCalls": 4,
+      "toolApiMs": 483,
+      "observations": 4,
+      "outcome": "completed",
+      "note": "等待状态启用后再操作，没有盲点 disabled 控件"
+    },
+    {
+      "case": "appearance",
+      "backend": "codex-browser-use-ax",
+      "steps": [
+        {
+          "operation": "observe",
+          "elapsedMs": 132,
+          "state": "\t4 text Case: appearance\n\t5 container\n\t\t6 text Expected target: Appeared action\n\t\t7 button Start appearance, ID: appear-start\n\t8 text Ready"
+        },
+        {
+          "operation": "Start appearance",
+          "elapsedMs": 20,
+          "error": null
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 155,
+          "state": "\t4 text Case: appearance\n\t5 container\n\t\t6 text Expected target: Appeared action\n\t\t7 button Start appearance, ID: appear-start\n\t8 text Waiting for appearance"
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 22,
+          "state": "\t4 text Case: appearance\n\t5 container\n\t\t6 text Expected target: Appeared action\n\t\t7 button Start appearance, ID: appear-start\n\t\t9 button Appeared action\n\t8 text Waiting for appearance"
+        },
+        {
+          "operation": "Appeared action",
+          "elapsedMs": 15,
+          "error": null
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 154,
+          "state": "\t4 text Case: appearance\n\t5 container\n\t\t6 text Expected target: Appeared action\n\t\t7 button Start appearance, ID: appear-start\n\t\t9 button Appeared action\n\t10 text Appeared done"
+        }
+      ],
+      "outerCalls": 4,
+      "toolApiMs": 498,
+      "observations": 4,
+      "outcome": "completed",
+      "note": "新控件出现后读取实际索引，再点击"
+    },
+    {
+      "case": "scoped",
+      "backend": "codex-browser-use-ax",
+      "steps": [
+        {
+          "operation": "observe",
+          "elapsedMs": 133,
+          "state": "\t4 text Case: scoped\n\t5 container\n\t\t6 container North\n\t\t\t7 text North\n\t\t\t8 button Save, ID: north-save\n\t\t9 container South\n\t\t\t10 text South\n\t\t\t11 button Save, ID: south-save\n\t12 text Ready"
+        },
+        {
+          "operation": "Save in South",
+          "elapsedMs": 17,
+          "error": null
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 155,
+          "state": "\t4 text Case: scoped\n\t5 container\n\t\t6 container North\n\t\t\t7 text North\n\t\t\t8 button Save, ID: north-save\n\t\t9 container South\n\t\t\t10 text South\n\t\t\t11 button Save, ID: south-save\n\t12 text South saved"
+        }
+      ],
+      "outerCalls": 2,
+      "toolApiMs": 305,
+      "observations": 2,
+      "outcome": "completed",
+      "note": "从 AX 父容器 South 定位同名 Save 按钮"
+    },
+    {
+      "case": "trusted-checkbox",
+      "backend": "codex-browser-use-ax",
+      "steps": [
+        {
+          "operation": "observe",
+          "elapsedMs": 129,
+          "state": "\t4 text Case: trusted-checkbox\n\t5 checkbox (settable, integer) Description:  Trusted choice, Value: 0, ID: trusted-choice\n\t6 text Ready"
+        },
+        {
+          "operation": "Set Trusted choice",
+          "elapsedMs": 11,
+          "error": null
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 157,
+          "state": "\t4 text Case: trusted-checkbox\n\t5 checkbox (settable, integer) Description:  Trusted choice, Value: 1, ID: trusted-choice\n\t6 text Ready"
+        }
+      ],
+      "outerCalls": 2,
+      "toolApiMs": 297,
+      "observations": 2,
+      "outcome": "state-only-no-click-event",
+      "note": "setValue 改变 checked，但 onclick 业务状态仍为 Ready；不能当作点击事件等价"
+    },
+    {
+      "case": "custom-checkbox",
+      "backend": "codex-browser-use-ax",
+      "steps": [
+        {
+          "operation": "observe",
+          "elapsedMs": 114,
+          "state": "\t4 text Case: custom-checkbox\n\t5 checkbox Description: Custom choice, Value: 0, ID: custom-choice\n\t6 text Ready"
+        },
+        {
+          "operation": "Click Custom choice",
+          "elapsedMs": 17,
+          "error": null
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 156,
+          "state": "\t4 text Case: custom-checkbox\n\t5 checkbox Description: Custom choice, Value: 1, ID: custom-choice\n\t6 text Custom checked=true"
+        }
+      ],
+      "outerCalls": 2,
+      "toolApiMs": 287,
+      "observations": 2,
+      "outcome": "completed",
+      "note": "自定义 ARIA checkbox 通过点击完成"
+    },
+    {
+      "case": "trusted-checkbox",
+      "backend": "codex-browser-use-ax",
+      "steps": [
+        {
+          "operation": "observe",
+          "elapsedMs": 114,
+          "state": "\t4 text Case: trusted-checkbox\n\t5 checkbox (settable, integer) Description:  Trusted choice, Value: 0, ID: trusted-choice\n\t6 text Ready"
+        },
+        {
+          "operation": "Click Trusted choice",
+          "elapsedMs": 16,
+          "error": null
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 153,
+          "state": "\t4 text Case: trusted-checkbox\n\t5 checkbox (settable, integer) Description:  Trusted choice, Value: 1, ID: trusted-choice\n\t6 text Checked=true; trusted=true"
+        }
+      ],
+      "outerCalls": 2,
+      "toolApiMs": 283,
+      "observations": 2,
+      "outcome": "completed",
+      "note": "与 setValue 对照，使用点击触发业务事件"
+    },
+    {
+      "case": "richtext",
+      "backend": "codex-browser-use-ax",
+      "steps": [
+        {
+          "operation": "observe",
+          "elapsedMs": 133,
+          "state": "\t4 text Case: richtext\n\t5 text entry area (settable) Description: Rich note, Value: Old note, ID: rich\n\t\t6 text Old note\n\t7 text Ready"
+        },
+        {
+          "operation": "Set Rich note",
+          "elapsedMs": 14,
+          "error": null
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 153,
+          "state": "\t4 text Case: richtext\n\t5 text entry area (settable) Description: Rich note, Value: New note, ID: rich\n\t\t6 text New note\n\t7 text Rich=New note"
+        }
+      ],
+      "outerCalls": 2,
+      "toolApiMs": 300,
+      "observations": 2,
+      "outcome": "completed",
+      "note": "按最终业务状态判定富文本赋值是否触发 input"
+    },
+    {
+      "case": "readonly",
+      "backend": "codex-browser-use-ax",
+      "steps": [
+        {
+          "operation": "observe",
+          "elapsedMs": 125,
+          "state": "\t4 text Case: readonly\n\t5 container\n\t\t6 text Read only \n\t\t7 text field Read only , Value: unchanged, ID: readonly\n\t8 text Ready"
+        },
+        {
+          "operation": "Attempt read-only setValue",
+          "elapsedMs": 7,
+          "error": "Error: Accessibility element 7 has no settable value"
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 19,
+          "state": "\t4 text Case: readonly\n\t5 container\n\t\t6 text Read only \n\t\t7 text field Read only , Value: unchanged, ID: readonly\n\t8 text Ready"
+        }
+      ],
+      "outerCalls": 2,
+      "toolApiMs": 151,
+      "observations": 2,
+      "outcome": "observed",
+      "note": "核对只读值是否保持 unchanged，以及工具是否明确报错"
+    },
+    {
+      "case": "rerender",
+      "backend": "codex-browser-use-ax",
+      "steps": [
+        {
+          "operation": "observe",
+          "elapsedMs": 127,
+          "state": "\t4 text Case: rerender\n\t5 container\n\t\t6 button Replace target, ID: replace-start\n\t\t7 button Replaceable action, ID: replace-target\n\t8 text Ready"
+        },
+        {
+          "operation": "Replace target",
+          "elapsedMs": 17,
+          "error": null
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 155,
+          "state": "\t4 text Case: rerender\n\t5 container\n\t\t6 button Replace target, ID: replace-start\n\t\t7 button Replaceable action, ID: replace-target\n\t8 text Target replaced"
+        },
+        {
+          "operation": "Click current replacement",
+          "elapsedMs": 15,
+          "error": null
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 154,
+          "state": "\t4 text Case: rerender\n\t5 container\n\t\t6 button Replace target, ID: replace-start\n\t\t7 button Replaceable action, ID: replace-target\n\t8 text Replacement done"
+        }
+      ],
+      "outerCalls": 3,
+      "toolApiMs": 468,
+      "observations": 3,
+      "outcome": "completed",
+      "note": "重渲染后重新观察并使用当前 AX 节点"
+    },
+    {
+      "case": "temporary-cover",
+      "backend": "codex-browser-use-ax",
+      "steps": [
+        {
+          "operation": "observe",
+          "elapsedMs": 142,
+          "state": "\t4 text Case: temporary-cover\n\t5 container\n\t\t6 button Start temporary cover, ID: cover-start\n\t\t7 button Covered action, ID: covered-target\n\t8 text Ready"
+        },
+        {
+          "operation": "Start temporary cover",
+          "elapsedMs": 17,
+          "error": null
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 154,
+          "state": "\t4 text Case: temporary-cover\n\t5 container\n\t\t6 button Start temporary cover, ID: cover-start\n\t\t7 button Covered action, ID: covered-target\n\t\t8 text Please wait\n\t9 text Covering"
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 5583,
+          "state": "\t4 text Case: temporary-cover\n\t5 container\n\t\t6 button Start temporary cover, ID: cover-start\n\t\t7 button Covered action, ID: covered-target\n\t9 text Covering"
+        },
+        {
+          "operation": "Covered action after overlay",
+          "elapsedMs": 17,
+          "error": null
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 154,
+          "state": "\t4 text Case: temporary-cover\n\t5 container\n\t\t6 button Start temporary cover, ID: cover-start\n\t\t7 button Covered action, ID: covered-target\n\t8 text Covered done"
+        }
+      ],
+      "outerCalls": 4,
+      "toolApiMs": 6067,
+      "observations": 4,
+      "outcome": "completed",
+      "note": "先确认覆盖层消失，再操作目标"
+    },
+    {
+      "case": "disabled-option",
+      "backend": "codex-browser-use-ax",
+      "steps": [
+        {
+          "operation": "observe",
+          "elapsedMs": 127,
+          "state": "\t4 text Case: disabled-option\n\t5 container\n\t\t6 text Availability \n\t\t7 pop up button (collapsed, settable) Availability , Value: Open, ID: availability, Secondary Actions: Expand\n\t\t\t8 menu\n\t\t\t\t9 (selected) Open\n\t\t\t\t10 (disabled) Closed\n\t11 text Ready"
+        },
+        {
+          "operation": "Attempt disabled option",
+          "elapsedMs": 11,
+          "error": "Error: Error: Select option \"Closed\" is disabled\n    at HTMLSelectElement.pD (<anonymous>:1:1958)\n    at HTMLSelectElement.<anonymous> (<anonymous>:1:4296)"
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 14,
+          "state": "\t4 text Case: disabled-option\n\t5 container\n\t\t6 text Availability \n\t\t7 pop up button (collapsed, settable) Availability , Value: Open, ID: availability, Secondary Actions: Expand\n\t\t\t8 menu\n\t\t\t\t9 (selected) Open\n\t\t\t\t10 (disabled) Closed\n\t11 text Ready"
+        }
+      ],
+      "outerCalls": 2,
+      "toolApiMs": 152,
+      "observations": 2,
+      "outcome": "observed",
+      "note": "专门测试 API 对禁用选项的行为，不把它当作正常用户操作"
+    },
+    {
+      "case": "moving",
+      "backend": "codex-browser-use-ax",
+      "steps": [
+        {
+          "operation": "observe",
+          "elapsedMs": 132,
+          "state": "\t4 text Case: moving\n\t5 container\n\t\t6 button Start movement, ID: move-start\n\t\t7 button Description: Moving action, ID: moving\n\t8 text Ready"
+        },
+        {
+          "operation": "Start movement and activate known target",
+          "elapsedMs": 28,
+          "error": null
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 154,
+          "state": "\t4 text Case: moving\n\t5 container\n\t\t6 button Start movement, ID: move-start\n\t\t7 button Description: Moving action, ID: moving\n\t8 text Moving done"
+        }
+      ],
+      "outerCalls": 2,
+      "toolApiMs": 314,
+      "observations": 2,
+      "outcome": "completed",
+      "note": "AX 通过控件语义激活，未依赖截图坐标追踪移动"
+    },
+    {
+      "case": "frame-cover",
+      "backend": "codex-browser-use-ax",
+      "steps": [
+        {
+          "operation": "observe",
+          "elapsedMs": 136,
+          "state": "\t4 text Case: frame-cover\n\t5 container\n\t\t6 container Covered frame\n\t\t\t7 AXWebArea Frame, URL: 127.0.0.1:49942/frame?covered=1\n\t\t\t\t8 button Frame action\n\t\t9 text Permanent cover\n\t10 text Ready"
+        },
+        {
+          "operation": "Probe covered frame action",
+          "elapsedMs": 62,
+          "error": null
+        },
+        {
+          "operation": "observe",
+          "elapsedMs": 154,
+          "state": "\t4 text Case: frame-cover\n\t5 container\n\t\t6 container Covered frame\n\t\t\t7 AXWebArea Frame, URL: 127.0.0.1:49942/frame?covered=1\n\t\t\t\t8 button Frame done\n\t\t9 text Permanent cover\n\t10 text Ready"
+        }
+      ],
+      "outerCalls": 2,
+      "toolApiMs": 352,
+      "observations": 2,
+      "outcome": "observed",
+      "note": "记录 AX 语义激活对 iframe 遮挡的处理"
+    }
+  ],
+  "stateFormat": "Repeated page title, heading and focus lines removed; remaining AX rows and state values preserved.",
+  "probes": [
+    {
+      "case": "delayed-enabled",
+      "backend": "native-ax",
+      "elapsedMs": 186,
+      "error": null,
+      "finalState": "\t3 text Case: delayed-enabled\n\t4 container\n\t\t5 button Start enabling, ID: enable-start\n\t\t6 button (disabled) Delayed action, ID: enabled-target\n\t7 text Enabling",
+      "success": false
+    },
+    {
+      "case": "shadow-cover",
+      "backend": "native-ax",
+      "elapsedMs": 211,
+      "error": null,
+      "finalState": "\t4 text Case: shadow-cover\n\t5 container\n\t\t6 button Shadow covered action\n\t\t7 text Permanent cover\n\t8 text Shadow incorrectly clicked"
+    }
+  ]
+}

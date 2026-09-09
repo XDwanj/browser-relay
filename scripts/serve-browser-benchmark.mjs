@@ -1,7 +1,10 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 const html = await readFile(
-  new URL("../tests/fixtures/automation.html", import.meta.url),
+  new URL(
+    `../tests/fixtures/${process.argv[2] === "gaps" ? "browser-gaps.html" : "automation.html"}`,
+    import.meta.url,
+  ),
   "utf8",
 );
 const server = createServer((req, res) => {

@@ -1,0 +1,38 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Browser reliability probes</title>
+<style>
+body{font:16px system-ui;max-width:950px;margin:24px}button,input,select,[contenteditable]{font:inherit;padding:10px;margin:6px}fieldset{display:inline-block}section[hidden]{display:none}.stage{position:relative;height:110px;border:1px solid #aaa;margin:12px 0}.cover{position:absolute;inset:0;background:#e2e8f0;z-index:10;display:grid;place-items:center}#moving{position:absolute;left:10px;top:10px;width:44px;padding:2px;height:42px}#rich{border:1px solid #aaa;min-height:50px}[role=checkbox]{border:1px solid #aaa;padding:12px;cursor:pointer}iframe{width:600px;height:85px}
+</style>
+<h1>Browser reliability probes</h1><p id="case-title"></p>
+<section data-case="delayed-enabled"><button id="enable-start">Start enabling</button><button id="enabled-target" disabled>Delayed action</button></section>
+<section data-case="appearance"><p>Expected target: Appeared action</p><button id="appear-start">Start appearance</button><div id="appeared"></div></section>
+<section data-case="temporary-cover"><button id="cover-start">Start temporary cover</button><div class="stage"><button id="covered-target">Covered action</button><div id="temporary-cover" class="cover" hidden style="display:none">Please wait</div></div></section>
+<section data-case="moving"><button id="move-start">Start movement</button><div class="stage"><button id="moving" aria-label="Moving action">Go</button></div></section>
+<section data-case="scoped"><fieldset><legend>North</legend><button id="north-save">Save</button></fieldset><fieldset><legend>South</legend><button id="south-save">Save</button></fieldset></section>
+<section data-case="rerender"><button id="replace-start">Replace target</button><button id="replace-target">Replaceable action</button></section>
+<section data-case="trusted-checkbox"><label><input id="trusted-choice" type="checkbox"> Trusted choice</label></section>
+<section data-case="custom-checkbox"><div id="custom-choice" role="checkbox" aria-checked="false" tabindex="0" aria-label="Custom choice">Custom choice</div></section>
+<section data-case="disabled-option"><label>Availability <select id="availability"><option value="open">Open</option><option value="closed" disabled>Closed</option></select></label></section>
+<section data-case="readonly"><label>Read only <input id="readonly" readonly value="unchanged"></label></section>
+<section data-case="richtext"><div id="rich" contenteditable="true" role="textbox" aria-label="Rich note">Old note</div></section>
+<section data-case="shadow-cover"><div class="stage"><div id="shadow-host"></div><div class="cover">Permanent cover</div></div></section>
+<section data-case="frame-cover"><div class="stage"><iframe title="Covered frame" src="/frame?covered=1"></iframe><div class="cover">Permanent cover</div></div></section>
+<p role="status" id="result">Ready</p>
+<script>
+const $=s=>document.querySelector(s), name=new URL(location.href).searchParams.get('case')||'delayed-enabled';
+document.querySelectorAll('section').forEach(s=>s.hidden=s.dataset.case!==name);$('#case-title').textContent='Case: '+name;
+const result=text=>$('#result').textContent=text;
+$('#enable-start').onclick=()=>{result('Enabling');setTimeout(()=>{$('#enabled-target').disabled=false},700)};
+$('#enabled-target').onclick=()=>result('Enabled done');
+$('#appear-start').onclick=()=>{result('Waiting for appearance');setTimeout(()=>{const b=document.createElement('button');b.textContent='Appeared action';b.onclick=()=>result('Appeared done');$('#appeared').append(b)},700)};
+$('#cover-start').onclick=()=>{result('Covering');$('#temporary-cover').style.display='grid';setTimeout(()=>$('#temporary-cover').style.display='none',700)};
+$('#covered-target').onclick=()=>result('Covered done');
+$('#move-start').onclick=()=>{result('Moving');$('#moving').animate([{left:'10px'},{left:'800px'}],{duration:700,fill:'forwards'})};
+$('#moving').onclick=()=>result('Moving done');
+$('#north-save').onclick=()=>result('North saved');$('#south-save').onclick=()=>result('South saved');
+$('#replace-target').onclick=()=>result('Old target clicked');$('#replace-start').onclick=()=>{const b=$('#replace-target').cloneNode(true);b.onclick=()=>result('Replacement done');$('#replace-target').replaceWith(b);result('Target replaced')};
+$('#trusted-choice').onclick=e=>result('Checked='+e.target.checked+'; trusted='+e.isTrusted);
+$('#custom-choice').onclick=e=>{const b=e.currentTarget;b.setAttribute('aria-checked',b.getAttribute('aria-checked')!=='true');result('Custom checked='+b.getAttribute('aria-checked'))};
+$('#availability').onchange=e=>result('Selected='+e.target.value);$('#readonly').oninput=()=>result('Read only changed');
+$('#rich').oninput=e=>result('Rich='+e.target.innerText);
+$('#shadow-host').attachShadow({mode:'open'}).innerHTML='<button style="font:inherit;padding:12px" onclick="document.getElementById(\'result\').textContent=\'Shadow incorrectly clicked\'">Shadow covered action</button>';
+</script></html>

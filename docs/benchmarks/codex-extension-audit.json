@@ -1,0 +1,131 @@
+{
+  "auditedAt": "2026-09-09",
+  "chromeExtensionVersion": "1.26.901.11451",
+  "desktopPluginVersion": "26.901.51231",
+  "sourceMapsFound": 0,
+  "scope": "Installed published JavaScript bundles and packaged workflow docs, not the complete upstream development source. Compiled/native parts and live server-side deployment are not fully visible. No vendor code copied into project.",
+  "formatting": "Read-only Prettier 3.6.2 copies under /tmp/browser-relay-codex-audit",
+  "sourceFiles": [
+    {
+      "package": "chrome-extension",
+      "path": "manifest.json",
+      "bytes": 2739,
+      "sha256": "43c407d46765d3f85754a516b4500b7f491c067548456ba211fa82fca5bd209b"
+    },
+    {
+      "package": "chrome-extension",
+      "path": "background.js",
+      "bytes": 355753,
+      "sha256": "83b7b7708ab82ecc9aa2ccad20a2167941a706b38a9467dee0bb124d13f0033e"
+    },
+    {
+      "package": "chrome-extension",
+      "path": "content-scripts/codex.js",
+      "bytes": 35143,
+      "sha256": "d01bc3fd8c98fb5c7a42cf6f465a8e27e24d436b2d4304df2ef38c027f54cc70"
+    },
+    {
+      "package": "chrome-extension",
+      "path": "content-scripts/foreign-frame-monitor.js",
+      "bytes": 5158,
+      "sha256": "337ad4ff3ec7846134e5d39528936b1cbb68107de3c4da0e0641c712bda66129"
+    },
+    {
+      "package": "desktop-browser-plugin",
+      "path": "scripts/browser-service.mjs",
+      "bytes": 1308334,
+      "sha256": "953706b76083dd4067958dee7668c4b88beb26122d6262fa60cb79ff7e6abbb1"
+    },
+    {
+      "package": "desktop-browser-plugin",
+      "path": "scripts/browser-client.mjs",
+      "bytes": 150611,
+      "sha256": "b9b9bc2319d5ee6aa0b1e481d63bb2130d28102fc7c9080803ab5552185d9037"
+    },
+    {
+      "package": "desktop-browser-plugin",
+      "path": "docs/accessibility.md",
+      "bytes": 4685,
+      "sha256": "331ebe1105d1c1aa31e54f1e94ab9644032d6e68371b02459dd31bc44618edcb"
+    },
+    {
+      "package": "desktop-browser-plugin",
+      "path": "docs/api-use-behavior.md",
+      "bytes": 3344,
+      "sha256": "9c648a2cbd94ada50bd855c5e9cb1ff2f33f6a2eff5d450d4b310fde336ec256"
+    },
+    {
+      "package": "desktop-browser-plugin",
+      "path": "docs/tab-claiming-chrome.md",
+      "bytes": 2071,
+      "sha256": "58bdb8d36284eb72e7ed8b1099e83acc01880df4cecebbc8a5c34c7f567fcc33"
+    }
+  ],
+  "findings": [
+    {
+      "topic": "tab ownership",
+      "file": "background.js",
+      "symbols": [
+        "claimTab",
+        "getOwningSessionId",
+        "isClaimedBySession",
+        "setTabMark"
+      ],
+      "evidence": "Claims bind tabId to sessionId, turnId and extension instance. Another active session is rejected; handoff/turn marks are tracked."
+    },
+    {
+      "topic": "request lifecycle",
+      "file": "background.js",
+      "symbols": [
+        "startRequest",
+        "finishRequest",
+        "stopSession",
+        "AbortController"
+      ],
+      "evidence": "Tracks active requests, abort signals, running session state and per-tab cursors."
+    },
+    {
+      "topic": "native transport recovery",
+      "file": "background.js",
+      "symbols": [
+        "requestHost",
+        "connectNative",
+        "rejectPendingHostRequests",
+        "scheduleReconnect"
+      ],
+      "evidence": "JSON-RPC request IDs, pending deadlines and explicit rejection on native-port loss; reconnect status is exposed."
+    },
+    {
+      "topic": "heartbeat cleanup",
+      "file": "background.js",
+      "symbols": [
+        "client-heartbeat-alarm",
+        "stopActiveSessions"
+      ],
+      "evidence": "Alarm periodically checks clients and stops sessions/ detaches debuggers if none remain connected."
+    },
+    {
+      "topic": "context and prompts",
+      "file": "docs/accessibility.md / docs/api-use-behavior.md",
+      "symbols": [
+        "AX state",
+        "diff",
+        "current indices",
+        "authoritative signal"
+      ],
+      "evidence": "Accessibility-first workflow, short known action groups, fresh indices, cheapest relevant observation and one meaningful success signal."
+    },
+    {
+      "topic": "native internal branches differ",
+      "file": "scripts/browser-service.mjs",
+      "symbols": [
+        "clickLocator",
+        "performPointerAction",
+        "resolvePointerActionTarget",
+        "focusLocator",
+        "readCheckedState"
+      ],
+      "evidence": "Published service contains separate locator and accessibility paths. Do not assume those routes have identical control/event/occlusion semantics; main results use live CUA AX traces."
+    }
+  ]
+}

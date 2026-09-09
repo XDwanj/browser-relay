@@ -46,6 +46,7 @@ variables. Inject `request(method,path,body)` for another transport.
 | `tab.ref(ref)` / `tab.locator(css,{frameId?})` / `tab.getByRole(role,{name,frameId?,exact?})` | Locator handle |
 | Locator `.click()` / `.doubleClick()` / `.fill(text)` / `.type(text)` | Action + resulting snapshot |
 | Locator `.select(value)` / `.check(bool)` / `.hover()` / `.waitFor({state,timeoutMs})` | Action + resulting snapshot |
+| Locator `.getByRole(role,{name,exact?})` | Descendant semantic locator scoped to this parent |
 | `tab.clickAt(x,y,{screenshotId?,allowFocus?})` | Visual click |
 | `tab.drag({x,y},{x,y},{screenshotId?,allowFocus?})` | Press, movement path, release |
 | `tab.key('Control+A')` / `tab.scroll(deltaY,{x,y})` | Keyboard / wheel |
@@ -62,7 +63,18 @@ is supplied by the workflow. `observe:'screenshot'` returns visual evidence.
 ## Action schema
 
 Each action has `type`. A target is `{ref}`, `{selector,frameId?}`, or
-`{role,name?,exact?,frameId?}`. Matching must be unique. Defaults are exact names.
+`{role,name?,exact?,frameId?,scope?}`. Matching must be unique. Defaults are exact names.
+`scope` is another observed target identifying an ancestor in the same document;
+nesting is bounded. A snapshot's `within` points to its named container ref;
+`includeNodes` also supplies `parentRef`. For example:
+
+```js
+await tab.getByRole('group',{name:'South'})
+  .getByRole('button',{name:'Save'}).click({timeoutMs:1500});
+// Equivalent batch target:
+// {role:'button',name:'Save',scope:{role:'group',name:'South'}}
+```
+
 Cross-origin iframe and shadow DOM refs are resolved by Chrome's AX/CDP APIs.
 Unavailable frames are listed in snapshot `warnings`, never silently guessed.
 
@@ -72,12 +84,25 @@ Unavailable frames are listed in snapshot `warnings`, never silently guessed.
 - `drag`: starting `x,y`, `to:{x,y}` or `path:[{x,y},...]`; optional screenshotId.
 - `fill`, `type`: `text`, optional `target`; fill requires a target. `clear:true`
   selects existing text. `submit:true` presses Enter after typing.
-- `select`: `target`, `value` string or array of option values.
-- `check`: `target`, boolean `checked`.
+- `select`: `target`, `value` string or array of option values. Disabled options
+  and disabled optgroups are rejected without changing the selection.
+- `check`: `target`, boolean `checked`; native inputs and ARIA checkbox/radio/switch.
+  Already-correct state is a no-op. Foreground changes dispatch mouse input and
+  verify checked state; background DOM fallback reports `strategy:'dom'` and
+  does not imply a trusted mouse event. A radio cannot be directly unchecked.
 - `key`: `key`, e.g. `Enter`, `Escape`, `Control+A`, `Meta+A`, `Shift+Tab`.
 - `scroll`: `target` or numeric `x,y`, plus `deltaX` and/or `deltaY` in pixels.
-- `wait`: `target`, state `attached|visible|hidden|detached`, timeoutMs 1–20000.
+- `wait`: `target`, state `attached|visible|hidden|detached|enabled`, timeoutMs 1–20000.
 - `navigate`: HTTP(S) `url`, or `about:blank`.
+
+Target actions accept optional `timeoutMs` (1–20000) for readiness checks:
+appearance, visibility, enabled state, occlusion, and pointer target stability.
+Without it, readiness errors fail immediately. This is distinct from the task
+timeout below. Waiting is cancellable; ambiguous targets, invalid selectors, and
+stale refs are not silently retargeted. Once input has been dispatched, it is
+never replayed. Parent iframe hit-testing checks the actual action point.
+Locator `select(value, options)`, `check(checked, options)`, and `hover(options)`
+accept the same action options.
 
 A group contains 1–100 operations. Default task timeout is 20 seconds; maximum
 120 seconds. Use async tasks when execution may exceed the local relay's

@@ -1,0 +1,655 @@
+{
+  "measuredAt": "2026-09-09T06:44:14.939Z",
+  "label": "after",
+  "browser": "153.0.8010.12",
+  "viewport": {
+    "width": 1466,
+    "height": 925
+  },
+  "headless": false,
+  "scope": "UI outcome probes, not a general model success benchmark. Refusal probes additionally require a surfaced error. Disabled option is an explicit UI-faithfulness criterion, not an assertion about the Playwright API contract.",
+  "summary": {
+    "delayed-enabled": {
+      "runs": 3,
+      "successes": 3
+    },
+    "appearance": {
+      "runs": 3,
+      "successes": 3
+    },
+    "temporary-cover": {
+      "runs": 3,
+      "successes": 3
+    },
+    "moving": {
+      "runs": 3,
+      "successes": 3
+    },
+    "scoped": {
+      "runs": 3,
+      "successes": 3
+    },
+    "rerender": {
+      "runs": 3,
+      "successes": 3
+    },
+    "trusted-checkbox": {
+      "runs": 3,
+      "successes": 3
+    },
+    "custom-checkbox": {
+      "runs": 3,
+      "successes": 3
+    },
+    "disabled-option": {
+      "runs": 3,
+      "successes": 3
+    },
+    "readonly": {
+      "runs": 3,
+      "successes": 3
+    },
+    "richtext": {
+      "runs": 3,
+      "successes": 3
+    },
+    "shadow-cover": {
+      "runs": 3,
+      "successes": 3
+    },
+    "frame-cover": {
+      "runs": 3,
+      "successes": 3
+    }
+  },
+  "samples": [
+    {
+      "case": "delayed-enabled",
+      "iteration": 0,
+      "expectedResult": "Enabled done",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 844.2,
+      "error": null,
+      "visibleResult": "Enabled done",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e08b0359a_1] RootWebArea \"Browser reliability probes\" focused=true\n[e08b0359a_2] heading \"Browser reliability probes\" level=1\n[e08b0359a_3] status\n[e08b0359a_5] StaticText \"Case: delayed-enabled\"\n[e08b0359a_6] button \"Start enabling\"\n[e08b0359a_7] button \"Delayed action\" disabled=true\n[e08b0359a_8] StaticText \"Ready\"\n[e08b0359a_11] RootWebArea \"Frame\" frame=946549C4088FDB0D87C488CB7EC58733",
+      "finalState": "- [e08b0359a_8] StaticText \"Ready\"\n~ [e08b0359a_7] button \"Delayed action\" focused=true\n+ [e08b0359a_13] StaticText \"Enabled done\""
+    },
+    {
+      "case": "appearance",
+      "iteration": 0,
+      "expectedResult": "Appeared done",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 854,
+      "error": null,
+      "visibleResult": "Appeared done",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e646723b9_1] RootWebArea \"Browser reliability probes\" focused=true\n[e646723b9_2] heading \"Browser reliability probes\" level=1\n[e646723b9_3] status\n[e646723b9_5] StaticText \"Case: appearance\"\n[e646723b9_6] button \"Start appearance\"\n[e646723b9_7] StaticText \"Ready\"\n[e646723b9_8] StaticText \"Expected target: Appeared action\"\n[e646723b9_10] RootWebArea \"Frame\" frame=3426F50056AED9D213C5D57EF05F7DA3",
+      "finalState": "- [e646723b9_7] StaticText \"Ready\"\n+ [e646723b9_14] StaticText \"Appeared done\"\n+ [e646723b9_12] button \"Appeared action\" focused=true"
+    },
+    {
+      "case": "temporary-cover",
+      "iteration": 0,
+      "expectedResult": "Covered done",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 878.9,
+      "error": null,
+      "visibleResult": "Covered done",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[ed0b6be69_1] RootWebArea \"Browser reliability probes\" focused=true\n[ed0b6be69_2] heading \"Browser reliability probes\" level=1\n[ed0b6be69_3] status\n[ed0b6be69_5] StaticText \"Case: temporary-cover\"\n[ed0b6be69_6] button \"Start temporary cover\"\n[ed0b6be69_7] StaticText \"Ready\"\n[ed0b6be69_9] button \"Covered action\"\n[ed0b6be69_11] RootWebArea \"Frame\" frame=8C35A48B7976782B382793938367164C",
+      "finalState": "- [ed0b6be69_7] StaticText \"Ready\"\n+ [ed0b6be69_14] StaticText \"Covered done\"\n~ [ed0b6be69_9] button \"Covered action\" focused=true"
+    },
+    {
+      "case": "moving",
+      "iteration": 0,
+      "expectedResult": "Moving done",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 859.9,
+      "error": null,
+      "visibleResult": "Moving done",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[ec46c867e_1] RootWebArea \"Browser reliability probes\" focused=true\n[ec46c867e_2] heading \"Browser reliability probes\" level=1\n[ec46c867e_3] status\n[ec46c867e_5] StaticText \"Case: moving\"\n[ec46c867e_6] button \"Start movement\"\n[ec46c867e_7] StaticText \"Ready\"\n[ec46c867e_9] button \"Moving action\"\n[ec46c867e_10] StaticText \"Go\"\n[ec46c867e_11] RootWebArea \"Frame\" frame=86CA818310E22670ED2A068BF43FB9CC",
+      "finalState": "- [ec46c867e_7] StaticText \"Ready\"\n+ [ec46c867e_13] StaticText \"Moving done\"\n~ [ec46c867e_9] button \"Moving action\" focused=true"
+    },
+    {
+      "case": "scoped",
+      "iteration": 0,
+      "expectedResult": "South saved",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 81.1,
+      "error": null,
+      "visibleResult": "South saved",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e7c089a02_1] RootWebArea \"Browser reliability probes\" focused=true\n[e7c089a02_2] heading \"Browser reliability probes\" level=1\n[e7c089a02_3] status\n[e7c089a02_5] StaticText \"Case: scoped\"\n[e7c089a02_6] group \"North\"\n[e7c089a02_7] group \"South\"\n[e7c089a02_8] StaticText \"Ready\"\n[e7c089a02_9] button \"Save\" within=\"e7c089a02_6\"\n[e7c089a02_10] button \"Save\" within=\"e7c089a02_7\"\n[e7c089a02_11] StaticText \"North\" within=\"e7c089a02_6\"\n[e7c089a02_13] StaticText \"South\" within=\"e7c089a02_7\"\n[e7c089a02_15] RootWebArea \"Frame\" frame=8D0CCC4729859AE2DC1C3E7D25CD05A5",
+      "finalState": "- [e7c089a02_8] StaticText \"Ready\"\n+ [e7c089a02_16] StaticText \"South saved\"\n~ [e7c089a02_10] button \"Save\" focused=true within=\"e7c089a02_7\""
+    },
+    {
+      "case": "rerender",
+      "iteration": 0,
+      "expectedResult": "Replacement done",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 142.7,
+      "error": null,
+      "visibleResult": "Replacement done",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[eb88d4695_1] RootWebArea \"Browser reliability probes\" focused=true\n[eb88d4695_2] heading \"Browser reliability probes\" level=1\n[eb88d4695_3] status\n[eb88d4695_5] StaticText \"Case: rerender\"\n[eb88d4695_6] button \"Replace target\"\n[eb88d4695_7] button \"Replaceable action\"\n[eb88d4695_8] StaticText \"Ready\"\n[eb88d4695_11] RootWebArea \"Frame\" frame=E7864069DC03C0C2ED18529E5C31BB83",
+      "finalState": "- [eb88d4695_7] button \"Replaceable action\"\n- [eb88d4695_8] StaticText \"Ready\"\n+ [eb88d4695_12] button \"Replaceable action\" focused=true\n+ [eb88d4695_15] StaticText \"Replacement done\""
+    },
+    {
+      "case": "trusted-checkbox",
+      "iteration": 0,
+      "expectedResult": "Checked=true; trusted=true",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 24.4,
+      "error": null,
+      "visibleResult": "Checked=true; trusted=true",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e30e453de_1] RootWebArea \"Browser reliability probes\" focused=true\n[e30e453de_2] heading \"Browser reliability probes\" level=1\n[e30e453de_3] status\n[e30e453de_5] StaticText \"Case: trusted-checkbox\"\n[e30e453de_6] checkbox \"Trusted choice\" checked=\"false\"\n[e30e453de_7] StaticText \"Ready\"\n[e30e453de_8] RootWebArea \"Frame\" frame=293B728A0881E2DF4CF92EB218D7550B",
+      "finalState": "- [e30e453de_7] StaticText \"Ready\"\n~ [e30e453de_6] checkbox \"Trusted choice\" focused=true checked=\"true\"\n+ [e30e453de_9] StaticText \"Checked=true; trusted=true\""
+    },
+    {
+      "case": "custom-checkbox",
+      "iteration": 0,
+      "expectedResult": "Custom checked=true",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 25.4,
+      "error": null,
+      "visibleResult": "Custom checked=true",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e8c926f10_1] RootWebArea \"Browser reliability probes\" focused=true\n[e8c926f10_2] heading \"Browser reliability probes\" level=1\n[e8c926f10_3] status\n[e8c926f10_5] StaticText \"Case: custom-checkbox\"\n[e8c926f10_6] checkbox \"Custom choice\" checked=\"false\"\n[e8c926f10_7] StaticText \"Ready\"\n[e8c926f10_8] StaticText \"Custom choice\"\n[e8c926f10_9] RootWebArea \"Frame\" frame=F68A625FD069CE7D8B1A9A38277C5D0A",
+      "finalState": "- [e8c926f10_7] StaticText \"Ready\"\n~ [e8c926f10_6] checkbox \"Custom choice\" focused=true checked=\"true\"\n+ [e8c926f10_10] StaticText \"Custom checked=true\""
+    },
+    {
+      "case": "disabled-option",
+      "iteration": 0,
+      "expectedResult": "Ready",
+      "expectRefusal": true,
+      "success": true,
+      "elapsedMs": 7.4,
+      "error": {
+        "code": "option_disabled",
+        "message": "option_disabled"
+      },
+      "visibleResult": "Ready",
+      "controlValue": "open",
+      "coveredFrameText": null,
+      "initialState": "[ea76b044b_1] RootWebArea \"Browser reliability probes\" focused=true\n[ea76b044b_2] heading \"Browser reliability probes\" level=1\n[ea76b044b_3] status\n[ea76b044b_5] StaticText \"Case: disabled-option\"\n[ea76b044b_6] StaticText \"Ready\"\n[ea76b044b_7] StaticText \"Availability\"\n[ea76b044b_8] combobox \"Availability\" value=\"Open\" expanded=false\n[ea76b044b_9] option \"Open\" selected=true\n[ea76b044b_10] option \"Closed\" disabled=true\n[ea76b044b_11] RootWebArea \"Frame\" frame=65FF8FF780F55DF148C51B15A02D3815",
+      "finalState": null
+    },
+    {
+      "case": "readonly",
+      "iteration": 0,
+      "expectedResult": "Ready",
+      "expectRefusal": true,
+      "success": true,
+      "elapsedMs": 5.9,
+      "error": {
+        "code": "not_editable",
+        "message": "not_editable"
+      },
+      "visibleResult": "Ready",
+      "controlValue": "unchanged",
+      "coveredFrameText": null,
+      "initialState": "[e57a28580_1] RootWebArea \"Browser reliability probes\" focused=true\n[e57a28580_2] heading \"Browser reliability probes\" level=1\n[e57a28580_3] status\n[e57a28580_5] StaticText \"Case: readonly\"\n[e57a28580_6] StaticText \"Ready\"\n[e57a28580_7] StaticText \"Read only\"\n[e57a28580_8] textbox \"Read only\" required=false\n[e57a28580_9] StaticText \"unchanged\"\n[e57a28580_10] RootWebArea \"Frame\" frame=7DA548B36A8CBB1D68A7284CF0493EDE",
+      "finalState": null
+    },
+    {
+      "case": "richtext",
+      "iteration": 0,
+      "expectedResult": "Rich=New note",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 30,
+      "error": null,
+      "visibleResult": "Rich=New note",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e24aa96bd_1] RootWebArea \"Browser reliability probes\" focused=true\n[e24aa96bd_2] heading \"Browser reliability probes\" level=1\n[e24aa96bd_3] status\n[e24aa96bd_5] StaticText \"Case: richtext\"\n[e24aa96bd_6] textbox \"Rich note\" required=false\n[e24aa96bd_7] StaticText \"Ready\"\n[e24aa96bd_8] StaticText \"Old note\"\n[e24aa96bd_9] RootWebArea \"Frame\" frame=BBE3CE4CD050CD1BBC1395157F3BA52E",
+      "finalState": "- [e24aa96bd_7] StaticText \"Ready\"\n- [e24aa96bd_8] StaticText \"Old note\"\n~ [e24aa96bd_6] textbox \"Rich note\" focused=true required=false\n+ [e24aa96bd_10] StaticText \"Rich=New note\"\n+ [e24aa96bd_11] StaticText \"New note\""
+    },
+    {
+      "case": "shadow-cover",
+      "iteration": 0,
+      "expectedResult": "Ready",
+      "expectRefusal": true,
+      "success": true,
+      "elapsedMs": 358.4,
+      "error": {
+        "code": "element_obscured",
+        "message": "Target is covered by another element"
+      },
+      "visibleResult": "Ready",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e46b8c721_1] RootWebArea \"Browser reliability probes\" focused=true\n[e46b8c721_2] heading \"Browser reliability probes\" level=1\n[e46b8c721_3] status\n[e46b8c721_5] StaticText \"Case: shadow-cover\"\n[e46b8c721_6] StaticText \"Ready\"\n[e46b8c721_7] button \"Shadow covered action\"\n[e46b8c721_8] StaticText \"Permanent cover\"\n[e46b8c721_10] RootWebArea \"Frame\" frame=EC69DFFAC776D541A471B122891E428C",
+      "finalState": null
+    },
+    {
+      "case": "frame-cover",
+      "iteration": 0,
+      "expectedResult": "Ready",
+      "expectRefusal": true,
+      "success": true,
+      "elapsedMs": 356.7,
+      "error": {
+        "code": "element_obscured",
+        "message": "Target iframe is clipped or covered at the action point"
+      },
+      "visibleResult": "Ready",
+      "controlValue": null,
+      "coveredFrameText": "Frame action",
+      "initialState": "[e8b5149f9_1] RootWebArea \"Browser reliability probes\" focused=true\n[e8b5149f9_2] heading \"Browser reliability probes\" level=1\n[e8b5149f9_3] status\n[e8b5149f9_5] StaticText \"Case: frame-cover\"\n[e8b5149f9_6] StaticText \"Ready\"\n[e8b5149f9_7] Iframe \"Covered frame\"\n[e8b5149f9_8] StaticText \"Permanent cover\"\n[e8b5149f9_9] RootWebArea \"Frame\" frame=A5A492F5D9225A0808BFA1B1F93E1E8F\n[e8b5149f9_10] button \"Frame action\" frame=A5A492F5D9225A0808BFA1B1F93E1E8F",
+      "finalState": null
+    },
+    {
+      "case": "delayed-enabled",
+      "iteration": 1,
+      "expectedResult": "Enabled done",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 866.6,
+      "error": null,
+      "visibleResult": "Enabled done",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[ed68cfb5e_1] RootWebArea \"Browser reliability probes\" focused=true\n[ed68cfb5e_2] heading \"Browser reliability probes\" level=1\n[ed68cfb5e_3] status\n[ed68cfb5e_5] StaticText \"Case: delayed-enabled\"\n[ed68cfb5e_6] button \"Start enabling\"\n[ed68cfb5e_7] button \"Delayed action\" disabled=true\n[ed68cfb5e_8] StaticText \"Ready\"\n[ed68cfb5e_11] RootWebArea \"Frame\" frame=C6CCD616CC6B3C47D08465FBBAB4C391",
+      "finalState": "- [ed68cfb5e_8] StaticText \"Ready\"\n~ [ed68cfb5e_7] button \"Delayed action\" focused=true\n+ [ed68cfb5e_13] StaticText \"Enabled done\""
+    },
+    {
+      "case": "appearance",
+      "iteration": 1,
+      "expectedResult": "Appeared done",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 848.5,
+      "error": null,
+      "visibleResult": "Appeared done",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e56f5309c_1] RootWebArea \"Browser reliability probes\" focused=true\n[e56f5309c_2] heading \"Browser reliability probes\" level=1\n[e56f5309c_3] status\n[e56f5309c_5] StaticText \"Case: appearance\"\n[e56f5309c_6] button \"Start appearance\"\n[e56f5309c_7] StaticText \"Ready\"\n[e56f5309c_8] StaticText \"Expected target: Appeared action\"\n[e56f5309c_10] RootWebArea \"Frame\" frame=CCF07822ABE9FC1DCC33C47CD81EE41C",
+      "finalState": "- [e56f5309c_7] StaticText \"Ready\"\n+ [e56f5309c_14] StaticText \"Appeared done\"\n+ [e56f5309c_12] button \"Appeared action\" focused=true"
+    },
+    {
+      "case": "temporary-cover",
+      "iteration": 1,
+      "expectedResult": "Covered done",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 873.5,
+      "error": null,
+      "visibleResult": "Covered done",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e14e3a034_1] RootWebArea \"Browser reliability probes\" focused=true\n[e14e3a034_2] heading \"Browser reliability probes\" level=1\n[e14e3a034_3] status\n[e14e3a034_5] StaticText \"Case: temporary-cover\"\n[e14e3a034_6] button \"Start temporary cover\"\n[e14e3a034_7] StaticText \"Ready\"\n[e14e3a034_9] button \"Covered action\"\n[e14e3a034_11] RootWebArea \"Frame\" frame=DA96CD68287D768D59FB91BC70D6CE8B",
+      "finalState": "- [e14e3a034_7] StaticText \"Ready\"\n+ [e14e3a034_14] StaticText \"Covered done\"\n~ [e14e3a034_9] button \"Covered action\" focused=true"
+    },
+    {
+      "case": "moving",
+      "iteration": 1,
+      "expectedResult": "Moving done",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 866.5,
+      "error": null,
+      "visibleResult": "Moving done",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e4996030c_1] RootWebArea \"Browser reliability probes\" focused=true\n[e4996030c_2] heading \"Browser reliability probes\" level=1\n[e4996030c_3] status\n[e4996030c_5] StaticText \"Case: moving\"\n[e4996030c_6] button \"Start movement\"\n[e4996030c_7] StaticText \"Ready\"\n[e4996030c_9] button \"Moving action\"\n[e4996030c_10] StaticText \"Go\"\n[e4996030c_11] RootWebArea \"Frame\" frame=793BB750D580A6416CD0736BD8D5B011",
+      "finalState": "- [e4996030c_7] StaticText \"Ready\"\n+ [e4996030c_13] StaticText \"Moving done\"\n~ [e4996030c_9] button \"Moving action\" focused=true"
+    },
+    {
+      "case": "scoped",
+      "iteration": 1,
+      "expectedResult": "South saved",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 87,
+      "error": null,
+      "visibleResult": "South saved",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e7393afb8_1] RootWebArea \"Browser reliability probes\" focused=true\n[e7393afb8_2] heading \"Browser reliability probes\" level=1\n[e7393afb8_3] status\n[e7393afb8_5] StaticText \"Case: scoped\"\n[e7393afb8_6] group \"North\"\n[e7393afb8_7] group \"South\"\n[e7393afb8_8] StaticText \"Ready\"\n[e7393afb8_9] button \"Save\" within=\"e7393afb8_6\"\n[e7393afb8_10] button \"Save\" within=\"e7393afb8_7\"\n[e7393afb8_11] StaticText \"North\" within=\"e7393afb8_6\"\n[e7393afb8_13] StaticText \"South\" within=\"e7393afb8_7\"\n[e7393afb8_15] RootWebArea \"Frame\" frame=40E361F697FEE5925079E5B98B35DFC1",
+      "finalState": "- [e7393afb8_8] StaticText \"Ready\"\n+ [e7393afb8_16] StaticText \"South saved\"\n~ [e7393afb8_10] button \"Save\" focused=true within=\"e7393afb8_7\""
+    },
+    {
+      "case": "rerender",
+      "iteration": 1,
+      "expectedResult": "Replacement done",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 135.4,
+      "error": null,
+      "visibleResult": "Replacement done",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[ef02614a5_1] RootWebArea \"Browser reliability probes\" focused=true\n[ef02614a5_2] heading \"Browser reliability probes\" level=1\n[ef02614a5_3] status\n[ef02614a5_5] StaticText \"Case: rerender\"\n[ef02614a5_6] button \"Replace target\"\n[ef02614a5_7] button \"Replaceable action\"\n[ef02614a5_8] StaticText \"Ready\"\n[ef02614a5_11] RootWebArea \"Frame\" frame=813839846C6177F80166BDC3444DDBAE",
+      "finalState": "- [ef02614a5_7] button \"Replaceable action\"\n- [ef02614a5_8] StaticText \"Ready\"\n+ [ef02614a5_12] button \"Replaceable action\" focused=true\n+ [ef02614a5_15] StaticText \"Replacement done\""
+    },
+    {
+      "case": "trusted-checkbox",
+      "iteration": 1,
+      "expectedResult": "Checked=true; trusted=true",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 25.9,
+      "error": null,
+      "visibleResult": "Checked=true; trusted=true",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e6bc49a0e_1] RootWebArea \"Browser reliability probes\" focused=true\n[e6bc49a0e_2] heading \"Browser reliability probes\" level=1\n[e6bc49a0e_3] status\n[e6bc49a0e_5] StaticText \"Case: trusted-checkbox\"\n[e6bc49a0e_6] checkbox \"Trusted choice\" checked=\"false\"\n[e6bc49a0e_7] StaticText \"Ready\"\n[e6bc49a0e_8] RootWebArea \"Frame\" frame=F54FF992652B4BF1D96A1644DDC7636F",
+      "finalState": "- [e6bc49a0e_7] StaticText \"Ready\"\n~ [e6bc49a0e_6] checkbox \"Trusted choice\" focused=true checked=\"true\"\n+ [e6bc49a0e_9] StaticText \"Checked=true; trusted=true\""
+    },
+    {
+      "case": "custom-checkbox",
+      "iteration": 1,
+      "expectedResult": "Custom checked=true",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 24.5,
+      "error": null,
+      "visibleResult": "Custom checked=true",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e7ce9082e_1] RootWebArea \"Browser reliability probes\" focused=true\n[e7ce9082e_2] heading \"Browser reliability probes\" level=1\n[e7ce9082e_3] status\n[e7ce9082e_5] StaticText \"Case: custom-checkbox\"\n[e7ce9082e_6] checkbox \"Custom choice\" checked=\"false\"\n[e7ce9082e_7] StaticText \"Ready\"\n[e7ce9082e_8] StaticText \"Custom choice\"\n[e7ce9082e_9] RootWebArea \"Frame\" frame=5DD3DE797A992FB8441D541F58F2B09B",
+      "finalState": "- [e7ce9082e_7] StaticText \"Ready\"\n~ [e7ce9082e_6] checkbox \"Custom choice\" focused=true checked=\"true\"\n+ [e7ce9082e_10] StaticText \"Custom checked=true\""
+    },
+    {
+      "case": "disabled-option",
+      "iteration": 1,
+      "expectedResult": "Ready",
+      "expectRefusal": true,
+      "success": true,
+      "elapsedMs": 7.3,
+      "error": {
+        "code": "option_disabled",
+        "message": "option_disabled"
+      },
+      "visibleResult": "Ready",
+      "controlValue": "open",
+      "coveredFrameText": null,
+      "initialState": "[e61f2df37_1] RootWebArea \"Browser reliability probes\" focused=true\n[e61f2df37_2] heading \"Browser reliability probes\" level=1\n[e61f2df37_3] status\n[e61f2df37_5] StaticText \"Case: disabled-option\"\n[e61f2df37_6] StaticText \"Ready\"\n[e61f2df37_7] StaticText \"Availability\"\n[e61f2df37_8] combobox \"Availability\" value=\"Open\" expanded=false\n[e61f2df37_9] option \"Open\" selected=true\n[e61f2df37_10] option \"Closed\" disabled=true\n[e61f2df37_11] RootWebArea \"Frame\" frame=4600F524D808A4A52EB8D638FABA233C",
+      "finalState": null
+    },
+    {
+      "case": "readonly",
+      "iteration": 1,
+      "expectedResult": "Ready",
+      "expectRefusal": true,
+      "success": true,
+      "elapsedMs": 6.6,
+      "error": {
+        "code": "not_editable",
+        "message": "not_editable"
+      },
+      "visibleResult": "Ready",
+      "controlValue": "unchanged",
+      "coveredFrameText": null,
+      "initialState": "[e0be9f439_1] RootWebArea \"Browser reliability probes\" focused=true\n[e0be9f439_2] heading \"Browser reliability probes\" level=1\n[e0be9f439_3] status\n[e0be9f439_5] StaticText \"Case: readonly\"\n[e0be9f439_6] StaticText \"Ready\"\n[e0be9f439_7] StaticText \"Read only\"\n[e0be9f439_8] textbox \"Read only\" required=false\n[e0be9f439_9] StaticText \"unchanged\"\n[e0be9f439_10] RootWebArea \"Frame\" frame=EF1105B2F0B2BDFD3D723D359D8C571C",
+      "finalState": null
+    },
+    {
+      "case": "richtext",
+      "iteration": 1,
+      "expectedResult": "Rich=New note",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 25.4,
+      "error": null,
+      "visibleResult": "Rich=New note",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[efef8de87_1] RootWebArea \"Browser reliability probes\" focused=true\n[efef8de87_2] heading \"Browser reliability probes\" level=1\n[efef8de87_3] status\n[efef8de87_5] StaticText \"Case: richtext\"\n[efef8de87_6] textbox \"Rich note\" required=false\n[efef8de87_7] StaticText \"Ready\"\n[efef8de87_8] StaticText \"Old note\"\n[efef8de87_9] RootWebArea \"Frame\" frame=FC52C965C01A0D1CE7A772B29B137384",
+      "finalState": "- [efef8de87_7] StaticText \"Ready\"\n- [efef8de87_8] StaticText \"Old note\"\n~ [efef8de87_6] textbox \"Rich note\" focused=true required=false\n+ [efef8de87_10] StaticText \"Rich=New note\"\n+ [efef8de87_11] StaticText \"New note\""
+    },
+    {
+      "case": "shadow-cover",
+      "iteration": 1,
+      "expectedResult": "Ready",
+      "expectRefusal": true,
+      "success": true,
+      "elapsedMs": 355.8,
+      "error": {
+        "code": "element_obscured",
+        "message": "Target is covered by another element"
+      },
+      "visibleResult": "Ready",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e54ec4777_1] RootWebArea \"Browser reliability probes\" focused=true\n[e54ec4777_2] heading \"Browser reliability probes\" level=1\n[e54ec4777_3] status\n[e54ec4777_5] StaticText \"Case: shadow-cover\"\n[e54ec4777_6] StaticText \"Ready\"\n[e54ec4777_7] button \"Shadow covered action\"\n[e54ec4777_8] StaticText \"Permanent cover\"\n[e54ec4777_10] RootWebArea \"Frame\" frame=0A561E6B38083819CF9186FCC9C64FE4",
+      "finalState": null
+    },
+    {
+      "case": "frame-cover",
+      "iteration": 1,
+      "expectedResult": "Ready",
+      "expectRefusal": true,
+      "success": true,
+      "elapsedMs": 356.9,
+      "error": {
+        "code": "element_obscured",
+        "message": "Target iframe is clipped or covered at the action point"
+      },
+      "visibleResult": "Ready",
+      "controlValue": null,
+      "coveredFrameText": "Frame action",
+      "initialState": "[ed053d490_1] RootWebArea \"Browser reliability probes\" focused=true\n[ed053d490_2] heading \"Browser reliability probes\" level=1\n[ed053d490_3] status\n[ed053d490_5] StaticText \"Case: frame-cover\"\n[ed053d490_6] StaticText \"Ready\"\n[ed053d490_7] Iframe \"Covered frame\"\n[ed053d490_8] StaticText \"Permanent cover\"\n[ed053d490_9] RootWebArea \"Frame\" frame=3995F9361F498749DDA5690B5B964B17\n[ed053d490_10] button \"Frame action\" frame=3995F9361F498749DDA5690B5B964B17",
+      "finalState": null
+    },
+    {
+      "case": "delayed-enabled",
+      "iteration": 2,
+      "expectedResult": "Enabled done",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 860.3,
+      "error": null,
+      "visibleResult": "Enabled done",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e5e247319_1] RootWebArea \"Browser reliability probes\" focused=true\n[e5e247319_2] heading \"Browser reliability probes\" level=1\n[e5e247319_3] status\n[e5e247319_5] StaticText \"Case: delayed-enabled\"\n[e5e247319_6] button \"Start enabling\"\n[e5e247319_7] button \"Delayed action\" disabled=true\n[e5e247319_8] StaticText \"Ready\"\n[e5e247319_11] RootWebArea \"Frame\" frame=D76FE5D40AEEDCE1F73C6536400B0411",
+      "finalState": "- [e5e247319_8] StaticText \"Ready\"\n~ [e5e247319_7] button \"Delayed action\" focused=true\n+ [e5e247319_13] StaticText \"Enabled done\""
+    },
+    {
+      "case": "appearance",
+      "iteration": 2,
+      "expectedResult": "Appeared done",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 871.8,
+      "error": null,
+      "visibleResult": "Appeared done",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e45a529b3_1] RootWebArea \"Browser reliability probes\" focused=true\n[e45a529b3_2] heading \"Browser reliability probes\" level=1\n[e45a529b3_3] status\n[e45a529b3_5] StaticText \"Case: appearance\"\n[e45a529b3_6] button \"Start appearance\"\n[e45a529b3_7] StaticText \"Ready\"\n[e45a529b3_8] StaticText \"Expected target: Appeared action\"\n[e45a529b3_10] RootWebArea \"Frame\" frame=8E08EC05DDF490D37C7C15EF487E2A11",
+      "finalState": "- [e45a529b3_7] StaticText \"Ready\"\n+ [e45a529b3_14] StaticText \"Appeared done\"\n+ [e45a529b3_12] button \"Appeared action\" focused=true"
+    },
+    {
+      "case": "temporary-cover",
+      "iteration": 2,
+      "expectedResult": "Covered done",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 879.8,
+      "error": null,
+      "visibleResult": "Covered done",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e72516ab6_1] RootWebArea \"Browser reliability probes\" focused=true\n[e72516ab6_2] heading \"Browser reliability probes\" level=1\n[e72516ab6_3] status\n[e72516ab6_5] StaticText \"Case: temporary-cover\"\n[e72516ab6_6] button \"Start temporary cover\"\n[e72516ab6_7] StaticText \"Ready\"\n[e72516ab6_9] button \"Covered action\"\n[e72516ab6_11] RootWebArea \"Frame\" frame=C0656DCD74C76990BE12576DE7ACA38E",
+      "finalState": "- [e72516ab6_7] StaticText \"Ready\"\n+ [e72516ab6_14] StaticText \"Covered done\"\n~ [e72516ab6_9] button \"Covered action\" focused=true"
+    },
+    {
+      "case": "moving",
+      "iteration": 2,
+      "expectedResult": "Moving done",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 873.7,
+      "error": null,
+      "visibleResult": "Moving done",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e36a0c692_1] RootWebArea \"Browser reliability probes\" focused=true\n[e36a0c692_2] heading \"Browser reliability probes\" level=1\n[e36a0c692_3] status\n[e36a0c692_5] StaticText \"Case: moving\"\n[e36a0c692_6] button \"Start movement\"\n[e36a0c692_7] StaticText \"Ready\"\n[e36a0c692_9] button \"Moving action\"\n[e36a0c692_10] StaticText \"Go\"\n[e36a0c692_11] RootWebArea \"Frame\" frame=34A68CD49745BB885B28E9A7D6E952CE",
+      "finalState": "- [e36a0c692_7] StaticText \"Ready\"\n+ [e36a0c692_13] StaticText \"Moving done\"\n~ [e36a0c692_9] button \"Moving action\" focused=true"
+    },
+    {
+      "case": "scoped",
+      "iteration": 2,
+      "expectedResult": "South saved",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 80.7,
+      "error": null,
+      "visibleResult": "South saved",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e62816eac_1] RootWebArea \"Browser reliability probes\" focused=true\n[e62816eac_2] heading \"Browser reliability probes\" level=1\n[e62816eac_3] status\n[e62816eac_5] StaticText \"Case: scoped\"\n[e62816eac_6] group \"North\"\n[e62816eac_7] group \"South\"\n[e62816eac_8] StaticText \"Ready\"\n[e62816eac_9] button \"Save\" within=\"e62816eac_6\"\n[e62816eac_10] button \"Save\" within=\"e62816eac_7\"\n[e62816eac_11] StaticText \"North\" within=\"e62816eac_6\"\n[e62816eac_13] StaticText \"South\" within=\"e62816eac_7\"\n[e62816eac_15] RootWebArea \"Frame\" frame=FAF3F11215098D458AADC3389A7D1C05",
+      "finalState": "- [e62816eac_8] StaticText \"Ready\"\n+ [e62816eac_16] StaticText \"South saved\"\n~ [e62816eac_10] button \"Save\" focused=true within=\"e62816eac_7\""
+    },
+    {
+      "case": "rerender",
+      "iteration": 2,
+      "expectedResult": "Replacement done",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 141.9,
+      "error": null,
+      "visibleResult": "Replacement done",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e98f2f16f_1] RootWebArea \"Browser reliability probes\" focused=true\n[e98f2f16f_2] heading \"Browser reliability probes\" level=1\n[e98f2f16f_3] status\n[e98f2f16f_5] StaticText \"Case: rerender\"\n[e98f2f16f_6] button \"Replace target\"\n[e98f2f16f_7] button \"Replaceable action\"\n[e98f2f16f_8] StaticText \"Ready\"\n[e98f2f16f_11] RootWebArea \"Frame\" frame=9057D79A22CE7E20BC7D30268251943B",
+      "finalState": "- [e98f2f16f_7] button \"Replaceable action\"\n- [e98f2f16f_8] StaticText \"Ready\"\n+ [e98f2f16f_12] button \"Replaceable action\" focused=true\n+ [e98f2f16f_15] StaticText \"Replacement done\""
+    },
+    {
+      "case": "trusted-checkbox",
+      "iteration": 2,
+      "expectedResult": "Checked=true; trusted=true",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 24.1,
+      "error": null,
+      "visibleResult": "Checked=true; trusted=true",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[eee3f9c6f_1] RootWebArea \"Browser reliability probes\" focused=true\n[eee3f9c6f_2] heading \"Browser reliability probes\" level=1\n[eee3f9c6f_3] status\n[eee3f9c6f_5] StaticText \"Case: trusted-checkbox\"\n[eee3f9c6f_6] checkbox \"Trusted choice\" checked=\"false\"\n[eee3f9c6f_7] StaticText \"Ready\"\n[eee3f9c6f_8] RootWebArea \"Frame\" frame=D820851E7022C4BEB91AC4850D8687B6",
+      "finalState": "- [eee3f9c6f_7] StaticText \"Ready\"\n~ [eee3f9c6f_6] checkbox \"Trusted choice\" focused=true checked=\"true\"\n+ [eee3f9c6f_9] StaticText \"Checked=true; trusted=true\""
+    },
+    {
+      "case": "custom-checkbox",
+      "iteration": 2,
+      "expectedResult": "Custom checked=true",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 24.4,
+      "error": null,
+      "visibleResult": "Custom checked=true",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e46d8a3ab_1] RootWebArea \"Browser reliability probes\" focused=true\n[e46d8a3ab_2] heading \"Browser reliability probes\" level=1\n[e46d8a3ab_3] status\n[e46d8a3ab_5] StaticText \"Case: custom-checkbox\"\n[e46d8a3ab_6] checkbox \"Custom choice\" checked=\"false\"\n[e46d8a3ab_7] StaticText \"Ready\"\n[e46d8a3ab_8] StaticText \"Custom choice\"\n[e46d8a3ab_9] RootWebArea \"Frame\" frame=F0D60E91EF7443A18DCAE1BF5AFA7FD6",
+      "finalState": "- [e46d8a3ab_7] StaticText \"Ready\"\n~ [e46d8a3ab_6] checkbox \"Custom choice\" focused=true checked=\"true\"\n+ [e46d8a3ab_10] StaticText \"Custom checked=true\""
+    },
+    {
+      "case": "disabled-option",
+      "iteration": 2,
+      "expectedResult": "Ready",
+      "expectRefusal": true,
+      "success": true,
+      "elapsedMs": 7,
+      "error": {
+        "code": "option_disabled",
+        "message": "option_disabled"
+      },
+      "visibleResult": "Ready",
+      "controlValue": "open",
+      "coveredFrameText": null,
+      "initialState": "[e382e2332_1] RootWebArea \"Browser reliability probes\" focused=true\n[e382e2332_2] heading \"Browser reliability probes\" level=1\n[e382e2332_3] status\n[e382e2332_5] StaticText \"Case: disabled-option\"\n[e382e2332_6] StaticText \"Ready\"\n[e382e2332_7] StaticText \"Availability\"\n[e382e2332_8] combobox \"Availability\" value=\"Open\" expanded=false\n[e382e2332_9] option \"Open\" selected=true\n[e382e2332_10] option \"Closed\" disabled=true\n[e382e2332_11] RootWebArea \"Frame\" frame=0D2F6C7709432C2F73CEF8066E4F9F01",
+      "finalState": null
+    },
+    {
+      "case": "readonly",
+      "iteration": 2,
+      "expectedResult": "Ready",
+      "expectRefusal": true,
+      "success": true,
+      "elapsedMs": 6,
+      "error": {
+        "code": "not_editable",
+        "message": "not_editable"
+      },
+      "visibleResult": "Ready",
+      "controlValue": "unchanged",
+      "coveredFrameText": null,
+      "initialState": "[e2df4b315_1] RootWebArea \"Browser reliability probes\" focused=true\n[e2df4b315_2] heading \"Browser reliability probes\" level=1\n[e2df4b315_3] status\n[e2df4b315_5] StaticText \"Case: readonly\"\n[e2df4b315_6] StaticText \"Ready\"\n[e2df4b315_7] StaticText \"Read only\"\n[e2df4b315_8] textbox \"Read only\" required=false\n[e2df4b315_9] StaticText \"unchanged\"\n[e2df4b315_10] RootWebArea \"Frame\" frame=17A4F7B72D82B61701FA254CD9DEB1C8",
+      "finalState": null
+    },
+    {
+      "case": "richtext",
+      "iteration": 2,
+      "expectedResult": "Rich=New note",
+      "expectRefusal": false,
+      "success": true,
+      "elapsedMs": 19.1,
+      "error": null,
+      "visibleResult": "Rich=New note",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[e0ba358c6_1] RootWebArea \"Browser reliability probes\" focused=true\n[e0ba358c6_2] heading \"Browser reliability probes\" level=1\n[e0ba358c6_3] status\n[e0ba358c6_5] StaticText \"Case: richtext\"\n[e0ba358c6_6] textbox \"Rich note\" required=false\n[e0ba358c6_7] StaticText \"Ready\"\n[e0ba358c6_8] StaticText \"Old note\"\n[e0ba358c6_9] RootWebArea \"Frame\" frame=FB235A960CC21D221A13B4E09214E277",
+      "finalState": "- [e0ba358c6_7] StaticText \"Ready\"\n- [e0ba358c6_8] StaticText \"Old note\"\n~ [e0ba358c6_6] textbox \"Rich note\" focused=true required=false\n+ [e0ba358c6_10] StaticText \"Rich=New note\"\n+ [e0ba358c6_11] StaticText \"New note\""
+    },
+    {
+      "case": "shadow-cover",
+      "iteration": 2,
+      "expectedResult": "Ready",
+      "expectRefusal": true,
+      "success": true,
+      "elapsedMs": 357.4,
+      "error": {
+        "code": "element_obscured",
+        "message": "Target is covered by another element"
+      },
+      "visibleResult": "Ready",
+      "controlValue": null,
+      "coveredFrameText": null,
+      "initialState": "[ea404f539_1] RootWebArea \"Browser reliability probes\" focused=true\n[ea404f539_2] heading \"Browser reliability probes\" level=1\n[ea404f539_3] status\n[ea404f539_5] StaticText \"Case: shadow-cover\"\n[ea404f539_6] StaticText \"Ready\"\n[ea404f539_7] button \"Shadow covered action\"\n[ea404f539_8] StaticText \"Permanent cover\"\n[ea404f539_10] RootWebArea \"Frame\" frame=D8FD15093E7917807D2EFE307D2D85D1",
+      "finalState": null
+    },
+    {
+      "case": "frame-cover",
+      "iteration": 2,
+      "expectedResult": "Ready",
+      "expectRefusal": true,
+      "success": true,
+      "elapsedMs": 357.1,
+      "error": {
+        "code": "element_obscured",
+        "message": "Target iframe is clipped or covered at the action point"
+      },
+      "visibleResult": "Ready",
+      "controlValue": null,
+      "coveredFrameText": "Frame action",
+      "initialState": "[e8e5edefe_1] RootWebArea \"Browser reliability probes\" focused=true\n[e8e5edefe_2] heading \"Browser reliability probes\" level=1\n[e8e5edefe_3] status\n[e8e5edefe_5] StaticText \"Case: frame-cover\"\n[e8e5edefe_6] StaticText \"Ready\"\n[e8e5edefe_7] Iframe \"Covered frame\"\n[e8e5edefe_8] StaticText \"Permanent cover\"\n[e8e5edefe_9] RootWebArea \"Frame\" frame=9AAA2114A193BC39F21396FDDED17C3F\n[e8e5edefe_10] button \"Frame action\" frame=9AAA2114A193BC39F21396FDDED17C3F",
+      "finalState": null
+    }
+  ],
+  "fixtureSha256": "fef08bbcad5a90096bac6f5e7c538757835b7cff4951933af199bd38d6e2fc66",
+  "implementationBaseCommit": "1f1d80c",
+  "implementationSha256": {
+    "extension/automation.js": "3ffb4c97877cfc2e47af8eb263ebdf7b279276d1ec66eeb03ee5f65e144cf642",
+    "server/sdk.js": "fe789fd087eeb847cdb1145399015481b743d5e7e93c63127f6d80c0e90dca1c"
+  }
+}

@@ -102,10 +102,14 @@ export function createBrowser({
         run([{ type: "fill", target, text, ...options }]),
       type: (text, options = {}) =>
         run([{ type: "type", target, text, ...options }]),
-      hover: () => run([{ type: "hover", target }]),
-      select: (value) => run([{ type: "select", target, value }]),
-      check: (checked = true) => run([{ type: "check", target, checked }]),
+      hover: (options = {}) => run([{ type: "hover", target, ...options }]),
+      select: (value, options = {}) =>
+        run([{ type: "select", target, value, ...options }]),
+      check: (checked = true, options = {}) =>
+        run([{ type: "check", target, checked, ...options }]),
       waitFor: (options = {}) => run([{ type: "wait", target, ...options }]),
+      getByRole: (role, options = {}) =>
+        locator({ role, ...options, scope: target }),
       target,
     });
     return {

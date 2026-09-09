@@ -25,6 +25,7 @@ export async function setupBrowser({
   headed = false,
   relayLatencyMs = 0,
   viewport = { width: 1280, height: 1000 },
+  fixtureFile = "automation.html",
 } = {}) {
   const dir = await mkdtemp(join(tmpdir(), "browser-relay-e2e-"));
   const ext = join(dir, "extension");
@@ -94,7 +95,7 @@ export async function setupBrowser({
   try {
     await waitFor(async () => (await fetch(`http://127.0.0.1:${port}/`)).ok);
     const html = await readFile(
-      new URL("../fixtures/automation.html", import.meta.url),
+      new URL(`../fixtures/${fixtureFile}`, import.meta.url),
       "utf8",
     );
     fixture = createServer((req, res) => {

@@ -1,0 +1,37 @@
+{
+  "date": "2026-09-09",
+  "fixture": "tests/fixtures/automation.html",
+  "scope": "Isolated real Chromium/extension; three semantic clicks after reload. Investigative trace, not a timing benchmark.",
+  "before": {
+    "failedIterationZeroBased": 14,
+    "result": "Cross frame",
+    "parentPointerDown": {
+      "x": 412.296875,
+      "y": 468.53125,
+      "scrollY": 89
+    },
+    "childPointerEvents": [
+      {
+        "type": "pointerup",
+        "text": "Cross frame",
+        "x": 52.296875,
+        "y": 18.53125
+      }
+    ],
+    "childButtonRect": {
+      "x": 8,
+      "y": 8,
+      "width": 88.59375,
+      "height": 21
+    }
+  },
+  "inference": "Parent scrolling updated geometry before the compositor routed a complete gesture to the child. Pointer down and up reached different documents; no child click was produced.",
+  "fix": "Wait for rendered frames after actual iframe-owner scrolling, before pointer dispatch. Do not resend a click.",
+  "after": {
+    "independentConsecutiveRuns": 15,
+    "successes": 15,
+    "regressionConsecutiveRuns": 20,
+    "regressionSuccesses": 20
+  },
+  "regression": "tests/browser-e2e.test.mjs: actions through shadow DOM and cross-origin frame"
+}

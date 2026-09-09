@@ -45,14 +45,18 @@ code. New capabilities require both the CLI and extension to support protocol 2.
 ## Observe, act, verify
 
 Use the fresh accessibility snapshot as locator evidence. A returned ref selects
-one element; a `{role, name}` target must match uniquely. Use `frameId` to scope
-a repeated element in an iframe. Selectors also traverse open shadow roots.
+one element; a `{role, name}` target must match uniquely. Use the snapshot's
+`within` context or a scoped locator for repeated controls; use `frameId` for
+an iframe. Selectors also traverse open shadow roots.
 Refs expire after navigation or when the element disappears; re-observe then.
 
 Group actions whose targets and sequence are already known, and return the
 resulting state in the same call. For example: fill a discovered field, select a
 known option, click Search, wait for the expected result. Stop the group before
 an unknown page, unexpected dialog, or a decision requiring new evidence.
+For a target expected to appear, become enabled, stop moving, or become uncovered,
+set that action's `timeoutMs` instead of adding repeated Agent observation calls.
+This retries readiness checks before dispatch, and never replays the action.
 
 ```bash
 browser-relay actions --tab <id> --stdin <<'JSON'
@@ -75,6 +79,8 @@ confirmation message, URL, or visible result. Do not keep verifying it through
 unrelated surfaces once the task is complete. Errors stop a group and retain
 completed-action results. Read those results before deciding whether to retry;
 never replay a non-idempotent group blindly.
+When the workflow depends on a click/change handler, verify its business result;
+a tool returning successfully or a field value changing is not sufficient.
 
 ## Visual tasks
 

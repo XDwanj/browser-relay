@@ -1,0 +1,106 @@
+{
+  "measuredAt": "2026-09-09T06:39:24.890Z",
+  "scope": "Relay only. Already-ready Add row control; action and final observation timed, setup and independent outcome assertion excluded. Measures opt-in stability waiting overhead, not a model comparison.",
+  "browser": "153.0.8010.12",
+  "viewport": {
+    "width": 1466,
+    "height": 925
+  },
+  "headless": false,
+  "summary": {
+    "0": {
+      "runs": 7,
+      "elapsedMs": 36.9
+    },
+    "2000": {
+      "runs": 7,
+      "elapsedMs": 85.2
+    }
+  },
+  "samples": [
+    {
+      "iteration": 0,
+      "readinessTimeoutMs": 0,
+      "elapsedMs": 89.2,
+      "success": true
+    },
+    {
+      "iteration": 0,
+      "readinessTimeoutMs": 2000,
+      "elapsedMs": 91.3,
+      "success": true
+    },
+    {
+      "iteration": 1,
+      "readinessTimeoutMs": 2000,
+      "elapsedMs": 88.3,
+      "success": true
+    },
+    {
+      "iteration": 1,
+      "readinessTimeoutMs": 0,
+      "elapsedMs": 36.9,
+      "success": true
+    },
+    {
+      "iteration": 2,
+      "readinessTimeoutMs": 0,
+      "elapsedMs": 43.7,
+      "success": true
+    },
+    {
+      "iteration": 2,
+      "readinessTimeoutMs": 2000,
+      "elapsedMs": 84.4,
+      "success": true
+    },
+    {
+      "iteration": 3,
+      "readinessTimeoutMs": 2000,
+      "elapsedMs": 85,
+      "success": true
+    },
+    {
+      "iteration": 3,
+      "readinessTimeoutMs": 0,
+      "elapsedMs": 38,
+      "success": true
+    },
+    {
+      "iteration": 4,
+      "readinessTimeoutMs": 0,
+      "elapsedMs": 33,
+      "success": true
+    },
+    {
+      "iteration": 4,
+      "readinessTimeoutMs": 2000,
+      "elapsedMs": 89.2,
+      "success": true
+    },
+    {
+      "iteration": 5,
+      "readinessTimeoutMs": 2000,
+      "elapsedMs": 85.2,
+      "success": true
+    },
+    {
+      "iteration": 5,
+      "readinessTimeoutMs": 0,
+      "elapsedMs": 32.4,
+      "success": true
+    },
+    {
+      "iteration": 6,
+      "readinessTimeoutMs": 0,
+      "elapsedMs": 32.6,
+      "success": true
+    },
+    {
+      "iteration": 6,
+      "readinessTimeoutMs": 2000,
+      "elapsedMs": 81.4,
+      "success": true
+    }
+  ]
+}

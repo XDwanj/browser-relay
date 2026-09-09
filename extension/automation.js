@@ -34,18 +34,33 @@ const NODE_FUNCTION = `function(operation, args) {
   if (!this.isConnected) return {error:'stale_ref'};
   const view = this.ownerDocument.defaultView;
   const element = this.nodeType===1 ? this : this.parentElement;
+  const hitTest = (x,y) => {
+    let target=element;
+    for(;;){
+      const root=target.getRootNode();
+      const hit=root.elementFromPoint?.(x,y);
+      if(!hit || (hit!==target && !target.contains(hit)))return false;
+      if(!root.host)return true;
+      target=root.host;
+    }
+  };
+  if (operation === 'hitTest') return {hittable:hitTest(args.x,args.y)};
   if (operation === 'prepare') {
+    const chain=[];
+    for(let n=element;n;n=n.parentElement||n.getRootNode().host)chain.push([n,n.scrollLeft,n.scrollTop]);
+    const beforeX=view.scrollX, beforeY=view.scrollY;
     element.scrollIntoView({block:'center', inline:'center', behavior:'instant'});
     const r = element.getBoundingClientRect(), s = view.getComputedStyle(element);
     const visible = r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
-    const hit = this.getRootNode().elementFromPoint?.(r.x+r.width/2,r.y+r.height/2);
-    return {visible, disabled:!!element.disabled || element.getAttribute('aria-disabled')==='true',
-      obscured:!!hit && hit!==element && !element.contains(hit), x:r.x+r.width/2, y:r.y+r.height/2, width:r.width, height:r.height, clientLeft:element.clientLeft, clientTop:element.clientTop,
+    return {visible, disabled:element.matches(':disabled') || !!element.closest('[aria-disabled="true"]'),
+      obscured:!hitTest(r.x+r.width/2,r.y+r.height/2), x:r.x+r.width/2, y:r.y+r.height/2, width:r.width, height:r.height, clientLeft:element.clientLeft, clientTop:element.clientTop,
+      scrolled:beforeX!==view.scrollX||beforeY!==view.scrollY||chain.some(([n,x,y])=>n.scrollLeft!==x||n.scrollTop!==y),
       background:view.document.visibilityState==='hidden'};
   }
   if (operation === 'inspect') {
     const r=element.getBoundingClientRect(), s=view.getComputedStyle(element);
     return {visible:r.width>0 && r.height>0 && s.display!=='none' && s.visibility!=='hidden',
+      enabled:!element.matches(':disabled') && !element.closest('[aria-disabled="true"]'),
       value:this.type==='password'?'[redacted]':this.value, text:(this.innerText||'').slice(0,400)};
   }
   if (operation === 'click') { if(typeof element.click!=='function')return false;element.click(); return true; }
@@ -67,15 +82,17 @@ const NODE_FUNCTION = `function(operation, args) {
     if (this.tagName!=='SELECT') return {error:'not_select'};
     const values=Array.isArray(args.value)?args.value:[args.value];
     if (values.some(v=>!Array.from(this.options).some(o=>o.value===v))) return {error:'option_not_found'};
+    if (!this.multiple && values.length>1) return {error:'not_multiple_select'};
+    if (Array.from(this.options).some(o=>values.includes(o.value) && (o.disabled||o.parentElement?.tagName==='OPTGROUP'&&o.parentElement.disabled))) return {error:'option_disabled'};
     for (const option of this.options) option.selected=values.includes(option.value);
     this.dispatchEvent(new view.Event('input',{bubbles:true}));this.dispatchEvent(new view.Event('change',{bubbles:true}));
     return {selected:Array.from(this.selectedOptions).map(o=>o.value)};
   }
-  if (operation === 'check') {
-    if (!['checkbox','radio'].includes(this.type)) return {error:'not_checkable'};
-    if (this.checked!==args.checked) this.click();
-    if(this.checked!==args.checked)return {error:'checked_state_mismatch'};
-    return {checked:this.checked};
+  if (operation === 'checkState') {
+    if (['checkbox','radio'].includes(this.type)) return {checked:this.checked,radio:this.type==='radio'};
+    const role=this.getAttribute('role'), checked=this.getAttribute('aria-checked');
+    if (!['checkbox','radio','switch'].includes(role)||!['true','false','mixed'].includes(checked)) return {error:'not_checkable'};
+    return {checked:checked==='mixed'?null:checked==='true',radio:role==='radio'};
   }
 }`;
 
@@ -96,6 +113,7 @@ export function createAutomation({
       states.set(tabId, {
         refs: new Map(),
         nodes: new Map(),
+        ancestors: new Map(),
         next: 0,
         prefix: crypto.randomUUID().slice(0, 8),
         baselines: new Map(),
@@ -218,6 +236,15 @@ export function createAutomation({
         if (role === "InlineTextBox") continue;
         const backendId = node.backendDOMNodeId;
         const key = `${frameId}:${backendId}`;
+        const ancestry = [];
+        for (
+          let parent = axNodes.get(node.parentId), depth = 0;
+          parent && depth++ < 100;
+          parent = axNodes.get(parent.parentId)
+        )
+          if (parent.backendDOMNodeId)
+            ancestry.push(`${frameId}:${parent.backendDOMNodeId}`);
+        st.ancestors.set(key, ancestry);
         let ref;
         if (backendId) {
           ref = st.nodes.get(key);
@@ -307,7 +334,25 @@ export function createAutomation({
       if (!active.has(ref)) {
         st.refs.delete(ref);
         st.nodes.delete(`${node.frameId}:${node.backendId}`);
+        st.ancestors.delete(`${node.frameId}:${node.backendId}`);
       }
+    const byRef = new Map(nodes.filter((n) => n.ref).map((n) => [n.ref, n]));
+    for (const node of nodes) {
+      const backend = st.refs.get(node.ref);
+      if (!backend) continue;
+      const ancestors = (
+        st.ancestors.get(`${node.frameId}:${backend.backendId}`) || []
+      )
+        .map((key) => byRef.get(st.nodes.get(key)))
+        .filter(Boolean);
+      if (ancestors[0]) node.parentRef = ancestors[0].ref;
+      const scope = ancestors.find(
+        (n) =>
+          n.name &&
+          ["group", "form", "region", "navigation", "dialog"].includes(n.role),
+      );
+      if (scope) node.within = scope.ref;
+    }
     st.frames = frameInfo;
     return {
       ...meta,
@@ -317,13 +362,17 @@ export function createAutomation({
       warnings,
     };
   }
-  async function observe(tabId, options = {}) {
+  async function awaitPaint(tabId, sessionId) {
     // Input acknowledgement precedes paint/compositor scrolling. Wait for a
     // rendered frame, bounded for background tabs whose rAF can be suspended.
     await evaluate(
       tabId,
       `new Promise(resolve=>{const timer=setTimeout(resolve,100);requestAnimationFrame(()=>requestAnimationFrame(()=>{clearTimeout(timer);resolve();}));})`,
+      sessionId,
     );
+  }
+  async function observe(tabId, options = {}) {
+    await awaitPaint(tabId);
     if (options.mode === "screenshot") return screenshot(tabId, options);
     const st = state(tabId),
       data = await tree(tabId);
@@ -339,7 +388,7 @@ export function createAutomation({
           )
             .filter(
               ([k, v]) =>
-                !["ref", "role", "name", "frameId"].includes(k) &&
+                !["ref", "role", "name", "frameId", "parentRef"].includes(k) &&
                 v !== undefined,
             )
             .map(([k, v]) => ` ${k}=${JSON.stringify(v)}`)
@@ -432,7 +481,8 @@ export function createAutomation({
         ).catch(() => {});
     }
   }
-  async function resolveNode(tabId, target) {
+  async function resolveNode(tabId, target, depth = 0) {
+    if (depth > 5) fail("invalid_target", "Scope nesting is too deep");
     if (typeof target === "string")
       target =
         target.startsWith("e") && /^e[\w]+_\d+$/.test(target)
@@ -440,6 +490,8 @@ export function createAutomation({
           : { selector: target };
     if (!target || typeof target !== "object")
       fail("invalid_target", "Use a ref, selector, or role/name target");
+    if (target.scope && !(target.role || target.name))
+      fail("invalid_target", "scope requires a role/name target");
     const st = state(tabId);
     if (target.ref) {
       const node = st.refs.get(target.ref);
@@ -452,11 +504,22 @@ export function createAutomation({
       return node;
     }
     if (target.role || target.name) {
+      const scope = target.scope
+        ? await resolveNode(tabId, target.scope, depth + 1)
+        : null;
       const data = await tree(tabId);
       const matches = data.nodes.filter(
         (n) =>
           n.ref &&
           (!target.frameId || n.frameId === target.frameId) &&
+          (!scope ||
+            (
+              st.ancestors.get(
+                `${n.frameId}:${st.refs.get(n.ref)?.backendId}`,
+              ) || []
+            ).includes(
+              `${scope.frameId || data.frames[0]?.id}:${scope.backendId}`,
+            )) &&
           (!target.role || n.role === target.role) &&
           (target.name === undefined ||
             (target.exact === false
@@ -468,7 +531,7 @@ export function createAutomation({
       if (matches.length !== 1)
         fail(
           "ambiguous_target",
-          `Target matches ${matches.length} elements; use a ref or frameId`,
+          `Target matches ${matches.length} elements; use a ref, scope, or frameId`,
           409,
         );
       return st.refs.get(matches[0].ref);
@@ -531,7 +594,7 @@ export function createAutomation({
         ).catch(() => {});
     }
   }
-  async function frameOffset(tabId, frameId) {
+  async function frameOffset(tabId, frameId, point) {
     const st = state(tabId);
     if (!st.frames) await tree(tabId);
     let x = 0,
@@ -550,8 +613,26 @@ export function createAutomation({
         { backendId: owner.backendNodeId, sessionId: parent?.sessionId },
         "prepare",
       );
+      // A scroll can update DOM geometry before Chromium's compositor routes
+      // pointer events to an iframe. Otherwise down/up may hit different frames.
+      if (rect.scrolled && !rect.background)
+        await awaitPaint(tabId, parent?.sessionId);
       x += rect.x - rect.width / 2 + (rect.clientLeft || 0);
       y += rect.y - rect.height / 2 + (rect.clientTop || 0);
+      if (point) {
+        const hit = await nodeCall(
+          tabId,
+          { backendId: owner.backendNodeId, sessionId: parent?.sessionId },
+          "hitTest",
+          { x: point.x + x, y: point.y + y },
+        );
+        if (!rect.visible || !hit.hittable)
+          fail(
+            "element_obscured",
+            "Target iframe is clipped or covered at the action point",
+            409,
+          );
+      }
       frame = parent;
     }
     return { x, y };
@@ -746,6 +827,7 @@ export function createAutomation({
           if (
             stateName === "attached" ||
             (stateName === "visible" && details.visible) ||
+            (stateName === "enabled" && details.visible && details.enabled) ||
             (stateName === "hidden" && !details.visible)
           )
             return { matched: true };
@@ -770,13 +852,63 @@ export function createAutomation({
       } while (true);
       fail("wait_timeout", "Target did not reach the requested state", 408);
     }
-    let node, rect;
+    let node, rect, targetOffset;
     if (action.target) {
-      node = await resolveNode(tabId, action.target);
-      rect = await nodeCall(tabId, node, "prepare");
-      if (!rect.visible)
-        fail("element_not_visible", "Target is not visible", 409);
-      if (rect.disabled) fail("element_disabled", "Target is disabled", 409);
+      const deadline = Date.now() + (action.timeoutMs || 0);
+      let previousRect;
+      for (;;) {
+        checkCancelled(signal);
+        try {
+          node = await resolveNode(tabId, action.target);
+          rect = await nodeCall(tabId, node, "prepare");
+          if (!rect.visible)
+            fail("element_not_visible", "Target is not visible", 409);
+          if (rect.disabled)
+            fail("element_disabled", "Target is disabled", 409);
+          if (rect.obscured && type !== "scroll")
+            fail(
+              "element_obscured",
+              "Target is covered by another element",
+              409,
+            );
+          if (type !== "scroll")
+            targetOffset = await frameOffset(tabId, node.frameId, rect);
+          if (
+            action.timeoutMs &&
+            ["click", "double_click", "hover", "drag", "check"].includes(type)
+          ) {
+            const position = [
+              rect.x + targetOffset.x,
+              rect.y + targetOffset.y,
+              rect.width,
+              rect.height,
+            ];
+            if (
+              !previousRect ||
+              position.some((n, i) => Math.abs(n - previousRect[i]) > 0.5)
+            ) {
+              previousRect = position;
+              fail("element_unstable", "Target is still moving", 409);
+            }
+          }
+          break;
+        } catch (error) {
+          const retryable =
+            [
+              "element_not_found",
+              "element_not_visible",
+              "element_disabled",
+              "element_obscured",
+              "element_unstable",
+            ].includes(error.code) ||
+            (error.code === "invalid_target" &&
+              /found 0\b/.test(error.message));
+          if (!retryable || Date.now() >= deadline) throw error;
+          if (error.code !== "element_unstable") previousRect = undefined;
+          await pause(Math.min(50, deadline - Date.now()), signal);
+        }
+      }
+      checkCancelled(signal);
     }
     if (["fill", "type"].includes(type)) {
       if (node)
@@ -792,9 +924,21 @@ export function createAutomation({
       if (action.submit) await key(tabId, "Enter");
       return { typed: true };
     }
-    if (type === "select" || type === "check") {
+    if (type === "select") {
       if (!node) fail("invalid_target", `${type} requires a target`);
       return nodeCall(tabId, node, type, action);
+    }
+    if (type === "check") {
+      if (!node) fail("invalid_target", "check requires a target");
+      const current = await nodeCall(tabId, node, "checkState");
+      if (current.checked === action.checked)
+        return { checked: action.checked, changed: false };
+      if (current.radio && !action.checked)
+        fail(
+          "not_checkable",
+          "Radio controls cannot be unchecked directly",
+          409,
+        );
     }
     if (type === "scroll") {
       if (node && rect.background)
@@ -816,23 +960,28 @@ export function createAutomation({
       });
       return { scrolled: true };
     }
-    if (node && rect.obscured)
-      fail(
-        "element_obscured",
-        "Target is covered by another element; observe before retrying",
-        409,
-      );
     if (
       node &&
       rect.background &&
-      type === "click" &&
+      ["click", "check"].includes(type) &&
       (!action.button || action.button === "left")
     ) {
-      if (await nodeCall(tabId, node, "click"))
+      if (await nodeCall(tabId, node, "click")) {
+        if (type === "check") {
+          const after = await nodeCall(tabId, node, "checkState");
+          if (after.checked !== action.checked)
+            fail(
+              "checked_state_mismatch",
+              "Control did not reach requested checked state",
+              409,
+            );
+          return { checked: after.checked, changed: true, strategy: "dom" };
+        }
         return { clicked: true, strategy: "dom" };
+      }
     }
     const offset = node
-      ? await frameOffset(tabId, node.frameId)
+      ? targetOffset || (await frameOffset(tabId, node.frameId, rect))
       : { x: 0, y: 0 };
     const at = await point(
       tabId,
@@ -920,6 +1069,16 @@ export function createAutomation({
         clickCount: i,
       });
     }
+    if (type === "check") {
+      const after = await nodeCall(tabId, node, "checkState");
+      if (after.checked !== action.checked)
+        fail(
+          "checked_state_mismatch",
+          "Control did not reach requested checked state",
+          409,
+        );
+      return { checked: after.checked, changed: true, strategy: "mouse" };
+    }
     return { clicked: true, strategy: "mouse" };
   }
   function validate(actions) {
@@ -928,6 +1087,8 @@ export function createAutomation({
     for (const action of actions) {
       if (!action || !ACTIONS.has(action.type))
         fail("invalid_action", `Unsupported action: ${action?.type}`);
+      if (action.timeoutMs !== undefined)
+        integer(action.timeoutMs, 0, 1, 20000);
       if (
         ["type", "fill"].includes(action.type) &&
         typeof action.text !== "string"
@@ -953,7 +1114,7 @@ export function createAutomation({
       }
       if (
         action.type === "wait" &&
-        !["attached", "visible", "hidden", "detached"].includes(
+        !["attached", "visible", "hidden", "detached", "enabled"].includes(
           action.state || "visible",
         )
       )
@@ -1010,6 +1171,9 @@ export function createAutomation({
           "drag",
           "hover",
           "screenshot-mapping",
+          "scoped-targets",
+          "action-readiness-wait",
+          "aria-check",
           "tabs",
         ],
         maxActions: 100,

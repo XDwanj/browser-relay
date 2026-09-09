@@ -92,17 +92,22 @@ test(
     await t.test(
       "actions through shadow DOM and cross-origin frame",
       async () => {
-        await tab.getByRole("button", { name: "Shadow action" }).click();
-        await tab.getByRole("button", { name: "Frame action" }).click();
-        await tab.getByRole("button", { name: "Cross frame" }).click();
-        assert.equal(
-          await page.locator("#shadow button").textContent(),
-          "Shadow done",
-        );
-        assert.equal(
-          await page.frameLocator("#cross").locator("button").textContent(),
-          "Frame done",
-        );
+        // Parent scrolling must settle before routing input into an OOPIF.
+        // Repetition catches the down-in-parent/up-in-child race seen in audit.
+        for (let iteration = 0; iteration < 20; iteration++) {
+          await page.reload();
+          await tab.getByRole("button", { name: "Shadow action" }).click();
+          await tab.getByRole("button", { name: "Frame action" }).click();
+          await tab.getByRole("button", { name: "Cross frame" }).click();
+          assert.equal(
+            await page.locator("#shadow button").textContent(),
+            "Shadow done",
+          );
+          assert.equal(
+            await page.frameLocator("#cross").locator("button").textContent(),
+            "Frame done",
+          );
+        }
       },
     );
     await t.test("screenshot mapping and canvas click", async () => {
