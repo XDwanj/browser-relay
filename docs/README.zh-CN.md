@@ -163,7 +163,10 @@ Browser Relay 专门为 Agent 工作流做了设计,不只是给底层脚本用:
 
 ## CLI
 
-1.5 新增持久 JavaScript 会话、可访问性元素引用、差量快照和批量动作。
+**1.5.0** 新增完整内容读取、标签会话归属与交接；
+详见[发布说明与升级步骤](releases/v1.5.0.md)、[实现与验收记录](browser-use-parity.md)。开发推送不自动发布 npm，发布须手动指定版本与渠道。
+
+1.5 还包括持久 JavaScript 会话、可访问性元素引用、差量快照和批量动作。
 先用 `browser-relay observe --tab <id>` 获取页面状态，再用
 `browser-relay actions --tab <id> --file actions.json` 一次执行已确定的步骤。
 动作在插件内连续运行，同一标签页串行，支持查看任务及取消后续动作。

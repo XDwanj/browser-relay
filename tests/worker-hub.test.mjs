@@ -2,9 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { webcrypto } from 'node:crypto';
+import { WebSocket } from 'ws';
 import { deriveRouteId } from '../server/remote-protocol.js';
 
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
+if (!globalThis.WebSocket) globalThis.WebSocket = WebSocket;
 
 const { BrowserRelayDevice } = await import('../hub/src/worker.js');
 
@@ -58,4 +60,20 @@ test('Cloudflare connect path authenticates before replacement and keeps query-t
   assert.match(connectBody, /url\.searchParams\.get\("token"\)/);
   assert.match(connectBody, /authenticate\(legacySecret\)/);
   assert.ok(connectBody.indexOf('await this.authorize') < connectBody.indexOf('this.deviceSocket = server'));
+});
+
+test('Worker forwarding preserves abort signals and cancels the dispatched task',async()=>{
+ const {default:worker}=await import('../hub/src/worker.js');
+ const device=new BrowserRelayDevice({},{});
+ const secret='G1PMrqZmTckQP63P',routeId=deriveRouteId(secret);
+ await device.authorize(secret,{claim:true,routeId});
+ const sent=[];let started;
+ const start=new Promise(r=>started=r);
+ device.deviceSocket={readyState:1,send:raw=>{sent.push(JSON.parse(raw));started();}};
+ const env={DEVICES:{idFromName:id=>id,get:()=>({fetch:r=>device.fetch(r)})}};
+ const controller=new AbortController();
+ const result=worker.fetch(new Request('https://hub.test/v1/rpc',{method:'POST',headers:{Authorization:`Bearer ${secret}`},body:JSON.stringify({routeId,method:'POST',path:'/api/actions',body:{sessionId:'owner',actions:[{type:'key',key:'Enter'}]}}),signal:controller.signal}),env);
+ await start;controller.abort();
+ const response=await result;const error=await response.json();
+ assert.equal(error.code,'request_cancelled');assert.equal(error.retryable,false);assert.equal(error.taskId,sent[0].body.taskId);assert.equal(sent[1].path,`/api/tasks/${error.taskId}/cancel`);assert.equal(device.pending.size,0);
 });

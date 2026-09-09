@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 import { createServer } from "node:http";
+import { webcrypto } from "node:crypto";
+import { sendRpc } from "../hub/src/rpc.js";
+if (!globalThis.crypto) globalThis.crypto = webcrypto;
 import { WebSocket, WebSocketServer } from "ws";
 import {
   bearerToken,
@@ -106,34 +109,11 @@ function handleDeviceMessage(routeId, device, ws, raw) {
   }
 }
 
-function sendRpcToDevice(device, request) {
+function sendRpcToDevice(device, request, signal) {
   if (!device.ws || device.ws.readyState !== WebSocket.OPEN) {
     throw errorPayload("remote_device_offline", "Remote Browser Relay device is offline", { status: 409, retryable: true });
   }
-
-  const id = request.id || `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const frame = {
-    type: "rpc.request",
-    id,
-    method: request.method,
-    path: request.path,
-    headers: request.headers || {},
-    body: request.body ?? null,
-  };
-
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      device.pending.delete(id);
-      reject(errorPayload("remote_request_timeout", "Remote device did not respond before timeout", { status: 504, retryable: true }));
-    }, REMOTE_RPC_TIMEOUT_MS);
-    device.pending.set(id, { resolve, reject, timer });
-    try { device.ws.send(JSON.stringify(frame)); }
-    catch (err) {
-      clearTimeout(timer);
-      device.pending.delete(id);
-      reject(errorPayload("remote_send_failed", err instanceof Error ? err.message : String(err), { status: 502, retryable: true }));
-    }
-  });
+  return sendRpc(device.ws,device.pending,request,{signal,timeoutMs:REMOTE_RPC_TIMEOUT_MS});
 }
 
 const server = createServer(async (req, res) => {
@@ -169,8 +149,12 @@ const server = createServer(async (req, res) => {
         return jsonResponse(res, 400, errorPayload("invalid_request", "method and path are required", { status: 400 }));
       }
 
+      const controller=new AbortController();
+      const abort=()=>{if(!res.writableFinished)controller.abort();};
+      res.once('close',abort);
+      if(req.aborted || res.destroyed)controller.abort();
       try {
-        const response = await sendRpcToDevice(auth.device, body);
+        const response = await sendRpcToDevice(auth.device, body,controller.signal);
         const status = Number(response.status) || 200;
         const responseBody = response.body ?? null;
         const headers = response.headers && typeof response.headers === "object" ? response.headers : {};
@@ -184,8 +168,8 @@ const server = createServer(async (req, res) => {
         const payload = err && typeof err === "object" && "code" in err
           ? err
           : errorPayload("remote_rpc_failed", err instanceof Error ? err.message : String(err), { status: 502, retryable: true });
-        jsonResponse(res, payload.status || 502, payload);
-      }
+        if(!res.destroyed)jsonResponse(res, payload.status || 502, payload);
+      } finally {res.removeListener('close',abort);}
       return;
     }
 

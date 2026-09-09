@@ -3,10 +3,13 @@ import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 import { WebSocketServer, WebSocket } from "ws";
 import { SNAPSHOT_JS } from "./snapshot.js";
 import { buildWaitExpression, normalizeWaitOptions } from "../extension/wait.js";
 import { createCdpBridge } from "./cdp-bridge.js";
+import { isAutomationPath, isTaskRequest, PROTOCOL_VERSION } from "../extension/protocol.js";
+let executorInfo = null;
 
 // ---------------------------------------------------------------------------
 // Config
@@ -383,13 +386,19 @@ function onExtensionMessage(data) {
   let msg;
   try { msg = JSON.parse(typeof data === "string" ? data : data.toString()); } catch { return; }
 
+  if (msg?.method === 'BrowserRelay.hello') {
+    const info=msg.params;
+    if (Number.isInteger(info?.protocolVersion) && typeof info.extensionVersion==='string' && typeof info.runtimeId==='string' && Array.isArray(info.features))
+      executorInfo={protocolVersion:info.protocolVersion,extensionVersion:info.extensionVersion,runtimeId:info.runtimeId,features:info.features};
+    return;
+  }
   if (msg?.method === "pong") return;
 
   if (typeof msg?.id === "number" && (msg.result !== undefined || msg.error !== undefined)) {
     const pending = pendingCommands.get(msg.id);
     if (!pending) return;
     pendingCommands.delete(msg.id);
-    if (msg.error) pending.reject(new Error(String(msg.error)));
+    if (msg.error) pending.reject(typeof msg.error === "object" ? new ApiError(msg.error.status || 500,msg.error.code || "cdp_error",msg.error.message || "Browser command failed") : new Error(String(msg.error)));
     else pending.resolve(msg.result);
     return;
   }
@@ -1173,18 +1182,39 @@ const server = createServer(async (req, res) => {
 
   // All /api/* routes
   if (path.startsWith("/api/")) {
-    if (["/api/observe", "/api/actions", "/api/capabilities", "/api/tabs/create", "/api/tabs/close"].includes(path) || path.startsWith("/api/tasks/")) {
+    if (isAutomationPath(path)) {
       try {
         await ensureExtension();
+        if (executorInfo?.protocolVersion !== PROTOCOL_VERSION)
+          throw new ApiError(409,'protocol_mismatch','The running Chrome extension does not advertise protocol 2. Reload the matching Browser Relay extension; restarting the daemon alone is insufficient.',{details:{requiredProtocol:PROTOCOL_VERSION,executor:executorInfo}});
         const body = req.method === "POST" ? await readBody(req) : {};
-        const result = await sendToExtension("BrowserRelay.automation", {method:req.method,path:req.url,body});
-        return jsonResponse(res, result.ok === false ? result.status || 400 : 200, result);
+        const taskRequest = isTaskRequest(req.method, path);
+        const taskId = taskRequest ? (req.method === "GET" ? url.searchParams.get("taskId") : body.taskId) || `job_${randomUUID()}` : null;
+        const sessionId = req.method === "GET" ? url.searchParams.get("sessionId") : body.sessionId;
+        if (taskId) {
+          if (req.method === "GET") url.searchParams.set("taskId", taskId);
+          else body.taskId = taskId;
+        }
+        if (req.aborted || res.destroyed) return;
+        const cancel = () => {
+          if (taskId && !res.writableFinished)
+            void sendToExtension("BrowserRelay.automation", { method: "POST", path: `/api/tasks/${encodeURIComponent(taskId)}/cancel`, body: { sessionId } }).catch(() => {});
+        };
+        res.once("close", cancel);
+        try {
+          const result = await sendToExtension("BrowserRelay.automation", {method:req.method,path:url.pathname + url.search,body});
+          if (!res.destroyed) return jsonResponse(res, result.ok === false ? result.status || 400 : 200, result);
+        } catch (error) {
+          cancel();
+          if (taskId) { error.retryable = false; error.details = { ...error.details, taskId, sessionId }; }
+          throw error;
+        } finally { res.removeListener("close", cancel); }
       } catch(error) { return writeError(res,error); }
     }
     if (req.method === "GET" && path === "/api/debug") {
       const tabCount = connectedTargets.size;
       const uptimeSeconds = Math.floor((Date.now() - serverStartTime) / 1000);
-      return jsonResponse(res, 200, { ok: true, version: RELAY_VERSION, host: RELAY_HOST, port: RELAY_PORT, connected: extensionConnected(), tabCount, uptimeSeconds, commandsSent });
+      return jsonResponse(res, 200, { ok: true, version: RELAY_VERSION, host: RELAY_HOST, port: RELAY_PORT, connected: extensionConnected(), tabCount, uptimeSeconds, commandsSent, executor:executorInfo });
     }
 
     const routeMap = {
@@ -1264,6 +1294,7 @@ server.on("upgrade", (req, socket, head) => {
   if (extensionWs && extensionWs.readyState !== WebSocket.OPEN) {
     try { extensionWs.terminate(); } catch { /* ignore */ }
     extensionWs = null;
+    executorInfo = null;
     cdpBridge.disconnect();
   }
 
@@ -1277,6 +1308,7 @@ wss.on("connection", (ws, req) => {
   LOG.info("extension.connect", { remote, since: extensionConnectedSince });
   extensionWs = ws;
   extensionProtocolError = null;
+  executorInfo = null;
   connectedTargets.clear();
   clearGraceTimer();
   flushReconnectWaiters(true);
@@ -1292,6 +1324,7 @@ wss.on("connection", (ws, req) => {
     if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
     if (extensionWs !== ws) return;
     extensionWs = null;
+    executorInfo = null;
     cdpBridge.disconnect();
     for (const [id, pending] of pendingCommands) {
       clearTimeout(pending.timer);

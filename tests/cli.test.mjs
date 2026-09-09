@@ -20,6 +20,7 @@ import net from 'node:net';
 const packageVersion = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8')).version;
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 const bundledSkillDir = join(repoRoot, 'skills/browser-relay');
+const runningExecutor = {protocolVersion:2,extensionVersion:packageVersion,runtimeId:'test-executor',features:['read','observe']};
 const bundledSkill = readFileSync(join(bundledSkillDir, 'SKILL.md'), 'utf-8');
 
 async function getFreePort() {
@@ -317,7 +318,7 @@ test('CLI --json preserves structured relay errors on failure', async (t) => {
 
 test('status executes its platform service probe without a missing spawnSync import', async (t) => {
   const relay = await startFakeRelay(t, (_req, res) => {
-    const body = JSON.stringify({ ok: true, version: packageVersion, connected: true, tabCount: 1 });
+    const body = JSON.stringify({ ...runningExecutor, ok: true, version: packageVersion, connected: true, tabCount: 1 });
     res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) });
     res.end(body);
   });
@@ -480,8 +481,8 @@ test('wait CLI sends stable options and prints a compact success', async (t) => 
 
 test('doctor reports a ready end-to-end browser path as structured JSON', async (t) => {
   const relay = await startFakeRelay(t, (req, res) => {
-    assert.equal(req.url, '/api/debug');
-    const body = JSON.stringify({ ok: true, version: packageVersion, connected: true, tabCount: 2, uptimeSeconds: 42 });
+    assert.ok(['/api/debug','/api/capabilities'].includes(req.url));
+    const body = JSON.stringify({ ...runningExecutor, ok: true, version: packageVersion, connected: true, tabCount: 2, uptimeSeconds: 42 });
     res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) });
     res.end(body);
   });
@@ -503,6 +504,7 @@ test('doctor reports a ready end-to-end browser path as structured JSON', async 
     'relay.http',
     'relay.version',
     'extension.connection',
+    'extension.protocol',
     'tabs.attached',
     'logs.access',
   ]);
@@ -523,7 +525,7 @@ test('doctor recognizes the standard global .agents skill directory', async (t) 
   t.after(() => rmSync(root, { recursive: true, force: true }));
 
   const relay = await startFakeRelay(t, (_req, res) => {
-    const body = JSON.stringify({ ok: true, version: packageVersion, connected: true, tabCount: 1 });
+    const body = JSON.stringify({ ...runningExecutor, ok: true, version: packageVersion, connected: true, tabCount: 1 });
     res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) });
     res.end(body);
   });
@@ -563,7 +565,7 @@ test('doctor treats a disconnected extension and zero tabs as warnings', async (
 
 test('doctor warns but succeeds when CLI and daemon versions differ', async (t) => {
   const relay = await startFakeRelay(t, (_req, res) => {
-    const body = JSON.stringify({ ok: true, version: '0.0.0-test', connected: true, tabCount: 1 });
+    const body = JSON.stringify({ ...runningExecutor, ok: true, version: '0.0.0-test', connected: true, tabCount: 1 });
     res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) });
     res.end(body);
   });
@@ -631,8 +633,8 @@ test('doctor human output has stable prefixes and summary', async (t) => {
 
 test('doctor redacts query parameters from its JSON relay URL', async (t) => {
   const relay = await startFakeRelay(t, (req, res) => {
-    assert.equal(req.url, '/api/debug?token=secret-value');
-    const body = JSON.stringify({ ok: true, version: packageVersion, connected: true, tabCount: 1 });
+    assert.ok(['/api/debug?token=secret-value','/api/capabilities?token=secret-value'].includes(req.url));
+    const body = JSON.stringify({ ...runningExecutor, ok: true, version: packageVersion, connected: true, tabCount: 1 });
     res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) });
     res.end(body);
   });
@@ -675,4 +677,22 @@ test('doctor rejects URL userinfo without exposing credentials', async (t) => {
   const payload = JSON.parse(result.stdout);
   assert.equal(payload.relayUrl, `http://127.0.0.1:${port}`);
   assert.match(payload.checks.find((check) => check.id === 'relay.http').message, /userinfo is not supported/);
+});
+
+test('doctor fails a connected legacy executor instead of reporting false readiness',async t=>{
+ const relay=await startFakeRelay(t,(req,res)=>{
+  res.setHeader('Content-Type','application/json');
+  if(req.url==='/api/capabilities'){res.statusCode=409;res.end(JSON.stringify({ok:false,code:'protocol_mismatch',message:'Reload matching extension'}))}
+  else res.end(JSON.stringify({ok:true,version:packageVersion,connected:true,tabCount:1}));
+ });
+ const result=await runCli(t,relay.port,['doctor','--json']);const report=JSON.parse(result.stdout);
+ assert.equal(result.code,1);assert.equal(report.checks.find(x=>x.id==='extension.protocol').status,'fail');
+});
+
+test('one-shot exec drains runtime output before closing its session',async t=>{
+ const {port}=await startFakeRelay(t,(_req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({ok:true}));});
+ const result=await runCli(t,port,['exec','--code','"A".repeat(220000)+"OUTPUT_END"','--json']);
+ assert.equal(result.code,0,result.stderr);
+ const parsed=JSON.parse(result.stdout);assert.equal(parsed.runtimeOutput,undefined);
+ assert.equal(parsed.content.map(c=>c.text||'').join(''),'A'.repeat(220000)+'OUTPUT_END');
 });

@@ -1,0 +1,54 @@
+{
+  "url": "https://zh.omarchy.org/",
+  "capability": {
+    "ok": true,
+    "protocolVersion": 2,
+    "features": [
+      "observe",
+      "read",
+      "ax",
+      "refs",
+      "frames",
+      "shadow-dom",
+      "diff",
+      "actions",
+      "tasks",
+      "coordinates",
+      "drag",
+      "hover",
+      "screenshot-mapping",
+      "scoped-targets",
+      "action-readiness-wait",
+      "aria-check",
+      "tabs",
+      "observation-pages",
+      "full-links",
+      "sessions",
+      "handoff",
+      "focus"
+    ],
+    "maxActions": 100,
+    "extensionVersion": "1.5.0-dev.1",
+    "runtimeId": "0fbd0483-b48f-4ff2-98b0-8589240d99d1"
+  },
+  "elapsedMs": 3792,
+  "pages": 4,
+  "readBytes": 66862,
+  "legacyBytes": 37409,
+  "checks": {
+    "main": true,
+    "legacy": true,
+    "fullLinks": true
+  },
+  "checksRun": {
+    "unit": {
+      "passed": 105,
+      "skipped": 7
+    },
+    "browser": {
+      "passed": 28,
+      "failed": 0
+    }
+  },
+  "scope": "isolated-profile public-page reading verification; not X speed comparison"
+}

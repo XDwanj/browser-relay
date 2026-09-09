@@ -618,3 +618,21 @@ test('invalid JSON request returns a structured invalid_json error', async (t) =
   assert.equal(body.error, 'Invalid JSON in request body');
   assert.equal(body.message, body.error);
 });
+
+test('modern endpoints reject an old connected extension before dispatch and expose the live executor identity',async t=>{
+ const relay=await startRelay(t);const info={protocolVersion:2,extensionVersion:'1.5.0-dev.1',runtimeId:'test-live-instance',features:['read','sessions']};
+ const ext=await connectFakeExtension(t,relay.port,()=>({ok:true,...info}));
+ const old=await fetchJson(relay.port,'/api/capabilities');assert.equal(old.status,409);assert.equal(old.body.code,'protocol_mismatch');assert.equal(ext.commands.length,0);
+ ext.ws.send(JSON.stringify({method:'BrowserRelay.hello',params:info}));
+ await waitFor(async()=> (await fetchJson(relay.port,'/api/debug')).body.executor?.runtimeId===info.runtimeId);
+ const modern=await fetchJson(relay.port,'/api/capabilities');assert.equal(modern.body.runtimeId,info.runtimeId);assert.equal(modern.body.extensionVersion,info.extensionVersion);
+});
+
+test('disconnect rejects an in-flight modern request promptly with a structured error',async t=>{
+ const relay=await startRelay(t);const ext=await connectFakeExtension(t,relay.port,()=>new Promise(()=>{}));
+ ext.ws.send(JSON.stringify({method:'BrowserRelay.hello',params:{protocolVersion:2,extensionVersion:'test',runtimeId:'disconnect-test',features:['read']}}));
+ await waitFor(async()=> (await fetchJson(relay.port,'/api/debug')).body.executor?.runtimeId==='disconnect-test');
+ const response=fetchJson(relay.port,'/api/read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tabId:'t_AAAAAAAAAA',sessionId:'disconnect-case'})});
+ await waitFor(()=>ext.commands.length>0);ext.ws.close();
+ const result=await response;assert.equal(result.status,503);assert.equal(result.body.code,'extension_disconnected');
+});

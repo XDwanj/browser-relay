@@ -46,24 +46,7 @@ export function createCdpBridge({ targets, send, ensure }) {
       // client disconnects. Playwright accepts already-running targets.
       return send(method, method === 'Target.setAutoAttach' ? {...params,waitForDebuggerOnStart:false} : params, session.real);
     if (method === "Browser.getVersion") {
-      const target = [...targets().values()][0];
-      const agent = target
-        ? await send(
-            "Runtime.evaluate",
-            { expression: "navigator.userAgent", returnByValue: true },
-            target.sessionId,
-          )
-        : null;
-      const userAgent = agent?.result?.value || "Chrome/0.0.0.0";
-      return {
-        protocolVersion: "1.3",
-        product:
-          userAgent.match(/(?:HeadlessChrome|Chrome)\/[\d.]+/)?.[0] ||
-          "Chrome/0.0.0.0",
-        revision: "browser-relay",
-        userAgent,
-        jsVersion: "V8",
-      };
+      return send("Browser.getVersion", {});
     }
     if (method === "Browser.close") return {};
     if (method === "Browser.setDownloadBehavior") return {}; // Downloads use the user's Chrome manager.

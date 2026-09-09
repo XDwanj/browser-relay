@@ -1,54 +1,70 @@
 name: Publish to npm
 
+# Pushing development work must never publish a package.
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact package.json version approved for publication
+        required: true
+        type: string
+      channel:
+        description: npm dist-tag (development versions must use next)
+        required: true
+        default: next
+        type: choice
+        options:
+          - next
+          - latest
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  publish:
-    runs-on: ubuntu-latest
-
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm test
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Sync release manifests
-        run: npm run sync-version
-
-      - name: Check package contents
-        run: npm pack --dry-run
-
-      - name: Check npm version
-        id: npm-version
-        shell: bash
-        run: |
-          PACKAGE_NAME="$(node -p "require('./package.json').name")"
-          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
-
-          if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
-            echo "published=true" >> "$GITHUB_OUTPUT"
-            echo "${PACKAGE_NAME}@${PACKAGE_VERSION} is already published."
-          else
-            echo "published=false" >> "$GITHUB_OUTPUT"
-            echo "${PACKAGE_NAME}@${PACKAGE_VERSION} will be published."
-          fi
-
-      - name: Publish
-        if: steps.npm-version.outputs.published == 'false'
-        run: npm publish --access public --provenance
+      - run: npm ci --ignore-scripts
+      - name: Validate explicitly requested version and channel
         env:
+          APPROVED_VERSION: ${{ inputs.version }}
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+        run: |
+          node --input-type=module - <<'JS'
+          import {readFileSync} from 'node:fs';
+          const {version}=JSON.parse(readFileSync('package.json','utf8'));
+          if(version!==process.env.APPROVED_VERSION)throw Error('Approved version does not match package.json');
+          if(!['next','latest'].includes(process.env.RELEASE_CHANNEL))throw Error('Invalid release channel');
+          if(version.includes('-') && process.env.RELEASE_CHANNEL==='latest')throw Error('Development versions cannot be published as latest');
+          JS
+      - run: npm run sync-version
+      - run: npm pack --dry-run
+      - name: Publish explicitly approved version
+        run: npm publish --access public --provenance --tag "$RELEASE_CHANNEL"
+        env:
+          RELEASE_CHANNEL: ${{ inputs.channel }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -6,6 +6,7 @@ const packageVersion = JSON.parse(readFileSync(new URL("../../package.json", imp
 if (mode === "healthy") {
   globalThis.fetch = async () => new Response(JSON.stringify({
     ok: true,
+    protocolVersion:2,extensionVersion:packageVersion,runtimeId:"test-executor",features:["read","observe"],
     version: packageVersion,
     connected: true,
     tabCount: 1,

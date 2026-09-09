@@ -24,7 +24,7 @@ export const SNAPSHOT_JS = `
     if (!el.offsetParent && el.tagName !== 'BODY' && el.tagName !== 'HTML') {
       var style = getComputedStyle(el);
       if (style.display === 'none' || style.visibility === 'hidden') return false;
-      if (style.position !== 'fixed' && style.position !== 'sticky') return false;
+      if (style.display !== 'contents' && style.position !== 'fixed' && style.position !== 'sticky') return false;
     }
     if (el.getAttribute('aria-hidden') === 'true') return false;
     if (el.hasAttribute('hidden')) return false;
@@ -35,11 +35,11 @@ export const SNAPSHOT_JS = `
     var tag = el.tagName;
     if (tag === 'A') {
       var href = el.getAttribute('href') || '';
-      var text = (el.innerText || '').trim().slice(0, 120);
+      var text = (el.innerText || el.getAttribute('aria-label') || '').trim();
       return '[link' + (text ? ' "' + text + '"' : '') + (href ? ' href="' + href + '"' : '') + ']';
     }
     if (tag === 'BUTTON' || (el.getAttribute('role') === 'button')) {
-      var text = (el.innerText || el.getAttribute('aria-label') || '').trim().slice(0, 80);
+      var text = (el.getAttribute('aria-label') || el.innerText || '').trim();
       return '[button' + (text ? ' "' + text + '"' : '') + ']';
     }
     if (tag === 'INPUT') {
@@ -111,7 +111,7 @@ export const SNAPSHOT_JS = `
 
     var headingMatch = tag.match(/^H([1-6])$/);
     if (headingMatch) {
-      var text = (el.innerText || '').trim().slice(0, 200);
+      var text = (el.innerText || '').trim();
       if (text) addLine('#'.repeat(parseInt(headingMatch[1])) + ' ' + text, depth);
       return;
     }
@@ -132,7 +132,7 @@ export const SNAPSHOT_JS = `
         if (child.nodeType === 3) text += child.textContent;
       }
       text = text.trim();
-      if (text) addLine('- ' + text.slice(0, 200), depth);
+      if (text) addLine('- ' + text, depth);
       for (var i = 0; i < el.children.length; i++) {
         walk(el.children[i], depth + 1);
       }
@@ -142,7 +142,7 @@ export const SNAPSHOT_JS = `
     if (tag === 'TR') {
       var cells = [];
       for (var i = 0; i < el.children.length; i++) {
-        cells.push((el.children[i].innerText || '').trim().slice(0, 100));
+        cells.push((el.children[i].innerText || '').trim());
       }
       if (cells.some(function(c) { return c; })) {
         addLine('| ' + cells.join(' | ') + ' |', depth);

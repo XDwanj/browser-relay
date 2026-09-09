@@ -4,6 +4,8 @@
 ;(function () {
   const MESSAGES = {
     en: {
+      popupSessions: 'Active sessions',
+      popupStopSession: 'Stop',
       popupActiveTasks: 'browser tasks pending',
       popupCancelTasks: 'Cancel current tasks',
       popupCancellingTasks: 'Stopping pending actions…',
@@ -61,6 +63,8 @@
       popupInstallHint: 'Already installed? Check with <code style="display:inline; padding:1px 5px; cursor:text; font-size:11px">browser-relay status</code>',
     },
     zh_CN: {
+      popupSessions: '正在控制浏览器的会话',
+      popupStopSession: '停止',
       popupActiveTasks: '个浏览器任务待完成',
       popupCancelTasks: '取消当前任务',
       popupCancellingTasks: '正在停止后续操作…',

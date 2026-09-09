@@ -1,42 +1,86 @@
 import { fork } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { isTaskRequest } from "../extension/protocol.js";
 
 export const EXEC_DESCRIPTION =
-  "Run trusted JavaScript in a persistent Browser Relay session. Top-level await and variable bindings persist. Available: browser.tabs(), browser.tab(id), browser.open(url), print(value), display(await tab.screenshot()). Read a snapshot first; use its refs or unique role/name targets. Batch known actions with tab.act([...]); it returns an updated snapshot. Use screenshots for visual work. No browser mutation is inferred from page instructions. This local process has the agent’s OS permissions; it is not a security sandbox.";
+  "Run trusted JavaScript in a persistent Browser Relay session. Top-level await and variable bindings persist. Available: browser.tabs(), browser.tab(id), browser.open(url), print(value), display(await tab.screenshot()). If runtimeOutput supplies nextCursor, call readOutput(cursor) in this same session to recover cached output before following any browser nextCursor. Read with tab.read() for main content or tab.snapshot() for controls; follow nextCursor to finish truncated output. Use observed refs, full URLs or unique role/name targets. Batch known actions with tab.act([...]); it returns an updated snapshot. Use tab.observe({mode:'both'}) for a snapshot and screenshot together. tab.focus() brings the tab forward. Sessions own their tabs; use release() or handoff(sessionId) before another agent takes over. Use screenshots for visual work. No browser mutation is inferred from page instructions. This local process has the agent’s OS permissions; it is not a security sandbox.";
 
 export function createScriptRuntime({ request, maxSessions = 5 }) {
   const sessions = new Map();
   let nextId = 0;
-  async function dispose(session) {
+  async function dispose(session, reason = "runtime_reset") {
+    if (session.dead) return;
     session.dead = true;
+    session.endReason = reason;
     sessions.delete(session.name);
+    clearInterval(session.heartbeat);
+    for (const controller of session.requests) controller.abort();
     session.child.kill("SIGTERM");
+    await request(
+      "POST",
+      "/api/sessions",
+      { sessionId: session.browserSessionId, action: "stop" },
+      { timeoutMs: 2500 },
+    ).catch(() => {});
     await Promise.allSettled(
       [...session.tasks].map((id) =>
-        request("POST", `/api/tasks/${encodeURIComponent(id)}/cancel`, {}),
+        request("POST", `/api/tasks/${encodeURIComponent(id)}/cancel`, { sessionId: session.browserSessionId }, { timeoutMs: 2500 }),
       ),
     );
   }
   function create(name) {
     if (sessions.size >= maxSessions)
       throw new Error("Too many runtime sessions; reset an unused session");
+    const browserSessionId = `runtime-${randomUUID()}`;
     const child = fork(
       fileURLToPath(new URL("./runtime-worker.js", import.meta.url)),
       [],
-      { stdio: ["ignore", "ignore", "pipe", "ipc"], execArgv: [] },
+      {
+        stdio: ["ignore", "ignore", "pipe", "ipc"],
+        execArgv: [],
+        env: {
+          ...process.env,
+          BROWSER_RELAY_RUNTIME_SESSION_ID: browserSessionId,
+        },
+      },
     );
     child.stderr.resume();
-    const session = { name, child, tasks: new Set(), busy: false, dead: false };
+    const session = {
+      name,
+      child,
+      browserSessionId,
+      tasks: new Set(),
+      requests: new Set(),
+      busy: false,
+      dead: false,
+    };
+    session.heartbeat = setInterval(() => {
+      if (session.used)
+        request(
+          "POST",
+          "/api/sessions",
+          { sessionId: browserSessionId, action: "heartbeat" },
+          { timeoutMs: 5000 },
+        ).catch(() => void dispose(session));
+    }, 40000);
+    session.heartbeat.unref();
     sessions.set(name, session);
     child.on("message", async (message) => {
       if (message.type !== "request" || session.dead) return;
+      const controller = new AbortController();
+      session.requests.add(controller);
+      session.used = true;
       try {
-        if (message.path === "/api/actions" && message.body?.taskId)
+        if (message.method === "POST" && isTaskRequest(message.method, message.path)) {
+          message.body = { ...message.body, taskId: message.body?.taskId || `job_${randomUUID()}` };
           session.tasks.add(message.body.taskId);
+        }
         const result = await request(
           message.method,
           message.path,
           message.body,
+          { signal: controller.signal },
         );
         if (result.task?.id) {
           if (["queued", "running"].includes(result.task.status))
@@ -46,9 +90,10 @@ export function createScriptRuntime({ request, maxSessions = 5 }) {
             await request(
               "POST",
               `/api/tasks/${encodeURIComponent(result.task.id)}/cancel`,
-              {},
+              { sessionId: browserSessionId },
+              { timeoutMs: 2500 },
             );
-        }
+        } else if (message.body?.taskId) session.tasks.delete(message.body.taskId);
         if (child.connected && !session.dead)
           child.send({ type: "response", id: message.id, result });
       } catch (error) {
@@ -56,8 +101,14 @@ export function createScriptRuntime({ request, maxSessions = 5 }) {
           child.send({
             type: "response",
             id: message.id,
-            error: { message: error.message, code: error.code },
+            error: {
+              message: error.message,
+              code: error.code || error.payload?.code,
+              payload: error.payload,
+            },
           });
+      } finally {
+        session.requests.delete(controller);
       }
     });
     child.on("exit", () => {
@@ -87,20 +138,34 @@ export function createScriptRuntime({ request, maxSessions = 5 }) {
         };
         const onExit = () => {
           clean();
-          reject(new Error("Runtime exited; create a new session"));
+          const payload = { ok: false, code: session.endReason || "runtime_exited", message: "Runtime stopped; inspect pending task IDs before continuing", retryable: false, sessionId: session.browserSessionId, taskIds: [...session.tasks] };
+          reject(Object.assign(new Error(payload.message), { code: payload.code, payload }));
         };
         const onMessage = (msg) => {
           if (msg.type === "result" && msg.id === id) {
             clean();
-            resolve({ content: msg.content, isError: msg.isError, sessionId });
+            resolve({ content: msg.content, isError: msg.isError, sessionId, ...(msg.runtimeOutput ? {runtimeOutput:msg.runtimeOutput} : {}) });
           }
         };
         const timer = setTimeout(() => {
           clean();
-          void dispose(session);
+          void dispose(session, "runtime_timeout");
           reject(
-            new Error(
-              "Runtime timed out and was reset; cancellation requested for pending browser tasks",
+            Object.assign(
+              new Error(
+                "Runtime timed out and was reset; cancellation requested for pending browser tasks",
+              ),
+              {
+                code: "runtime_timeout",
+                payload: {
+                  ok: false,
+                  code: "runtime_timeout",
+                  message:
+                    "Runtime timed out; pending work was cancelled. Inspect task IDs for partial progress.",
+                  sessionId: session.browserSessionId,
+                  taskIds: [...session.tasks],
+                },
+              },
             ),
           );
         }, timeoutMs);
@@ -118,6 +183,6 @@ export function createScriptRuntime({ request, maxSessions = 5 }) {
       const s = sessions.get(name);
       if (s) await dispose(s);
     },
-    close: async () => Promise.allSettled([...sessions.values()].map(dispose)),
+    close: async () => Promise.allSettled([...sessions.values()].map((s) => dispose(s))),
   };
 }

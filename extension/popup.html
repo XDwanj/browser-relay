@@ -26,6 +26,10 @@
     code::after { content: 'copy'; position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 10px; opacity: 0.5; }
     code.copied::after { content: 'copied ✓'; opacity: 1; color: #86efac; }
     .hint { font-size: 11px; color: #78716c; margin-top: 6px; }
+    .session { display:flex; align-items:center; gap:8px; margin-top:8px; }
+    .session span { flex:1; min-width:0; font-size:12px; overflow-wrap:anywhere; }
+    .session button { flex:0 0 auto; }
+    #session-list { max-height:190px; overflow:auto; }
     footer { margin-top: 14px; padding-top: 10px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; }
     footer a { color: #64748b; text-decoration: none; cursor: pointer; }
     footer a:hover { color: #0f172a; }
@@ -56,6 +60,8 @@
     <p class="meta" id="task-status" role="status"></p>
     <button id="cancel-tasks" data-i18n="popupCancelTasks">Cancel current tasks</button>
   </div>
+
+  <section id="sessions" hidden><p class="meta" data-i18n="popupSessions">Active sessions</p><div id="session-list"></div></section>
 
   <footer>
     <span id="version">—</span>

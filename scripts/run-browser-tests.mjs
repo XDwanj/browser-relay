@@ -6,6 +6,8 @@ const result = spawnSync(
     "--test-concurrency=1",
     "tests/browser-e2e.test.mjs",
     "tests/browser-reliability.test.mjs",
+    "tests/browser-parity.test.mjs",
+    "tests/browser-review.test.mjs",
   ],
   { stdio: "inherit", env: { ...process.env, BROWSER_RELAY_E2E: "1" } },
 );

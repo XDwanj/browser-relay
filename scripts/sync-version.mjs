@@ -19,11 +19,12 @@ const manifestPaths = [
 for (const relativePath of manifestPaths) {
   const manifestPath = join(root, relativePath);
   const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
-  if (manifest.version === pkg.version) {
-    console.log(`[sync-version] ${relativePath} already at ${pkg.version}`);
-    continue;
-  }
-  manifest.version = pkg.version;
+  if (relativePath === "extension/manifest.json") {
+    const core = /^(\d+\.\d+\.\d+)(?:[-+].*)?$/.exec(pkg.version);
+    if (!core) throw new Error("Package version is not a supported semantic version");
+    manifest.version = core[1];
+    manifest.version_name = pkg.version;
+  } else manifest.version = pkg.version;
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
   console.log(`[sync-version] ${relativePath} -> ${pkg.version}`);
 }

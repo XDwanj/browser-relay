@@ -1,3 +1,4 @@
+import { sendRpc } from "./rpc.js";
 const MAX_BODY_SIZE = 128 * 1024;
 const RPC_TIMEOUT_MS = 30_000;
 const DEVICE_AUTH_TIMEOUT_MS = 5_000;
@@ -230,7 +231,7 @@ export class BrowserRelayDevice {
     }
 
     try {
-      const response = await this.sendRpcToDevice(body);
+      const response = await this.sendRpcToDevice(body, request.signal);
       const status = Number(response.status) || 200;
       if (typeof response.body === "string") {
         return new Response(response.body, {
@@ -250,34 +251,11 @@ export class BrowserRelayDevice {
     }
   }
 
-  sendRpcToDevice(requestBody) {
+  sendRpcToDevice(requestBody, signal) {
     if (!this.deviceSocket || this.deviceSocket.readyState !== WebSocket.OPEN) {
       throw errorPayload("remote_device_offline", "Remote Browser Relay device is offline", { status: 409, retryable: true });
     }
-
-    const id = requestBody.id || `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const frame = {
-      type: "rpc.request",
-      id,
-      method: requestBody.method,
-      path: requestBody.path,
-      headers: requestBody.headers || {},
-      body: requestBody.body ?? null,
-    };
-
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(id);
-        reject(errorPayload("remote_request_timeout", "Remote device did not respond before timeout", { status: 504, retryable: true }));
-      }, RPC_TIMEOUT_MS);
-      this.pending.set(id, { resolve, reject, timer });
-      try { this.deviceSocket.send(JSON.stringify(frame)); }
-      catch (err) {
-        clearTimeout(timer);
-        this.pending.delete(id);
-        reject(errorPayload("remote_send_failed", err instanceof Error ? err.message : String(err), { status: 502, retryable: true }));
-      }
-    });
+    return sendRpc(this.deviceSocket,this.pending,requestBody,{signal,timeoutMs:RPC_TIMEOUT_MS});
   }
 
   async handleStatus(request) {
@@ -320,6 +298,7 @@ export default {
           method: "POST",
           headers: request.headers,
           body: JSON.stringify(body),
+          signal: request.signal,
         }));
       }
 

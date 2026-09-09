@@ -1,0 +1,9 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Reading parity</title><style>body{font:16px sans-serif}astro-island{display:contents}article{padding:16px;border:1px solid #aaa}nav{position:sticky;top:0;background:white}</style></head><body>
+<nav><a href="/unrelated">Navigation noise</a></nav>
+<astro-island><main><h1>Complete reading</h1><button id="append" aria-label="Load more posts">20</button><div id="feed"></div><table><tr><th>Storage</th><td id="longcell"></td></tr></table><section aria-label="Controls"><button aria-label="1053 replies. Reply">1053</button><div style="display:none">SECRET_HIDDEN_TEXT</div></section></main></astro-island>
+<script>
+const para='完整正文：必须保留文章内容和完整链接，不要因为节省输出而静默删除后半段。'.repeat(14);
+for(let i=1;i<=20;i++)feed.insertAdjacentHTML('beforeend',`<article aria-label="Post ${i}"><h2>Author ${i}</h2><p>${para} END_POST_${i}</p><a href="/posts/${i}?full=long-link-value-${'x'.repeat(210)}">Permalink ${i}</a><button aria-label="${i} replies. Reply">${i}</button></article>`);
+longcell.textContent='TABLE_CONTENT_'.repeat(30)+'TABLE_END';
+append.onclick=()=>setTimeout(()=>feed.insertAdjacentHTML('beforeend','<article><h2>New author</h2><p>NEW_CONTENT_CONFIRMED</p><a href="/posts/21">Permalink 21</a></article>'),150);
+</script></body></html>

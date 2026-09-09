@@ -3,10 +3,13 @@
 
 import { SNAPSHOT_JS } from './snapshot.js'
 import { createAutomation } from './automation.js'
+import { isAutomationPath, PROTOCOL_VERSION, FEATURES } from './protocol.js'
 import { buildWaitExpression, normalizeWaitOptions } from './wait.js'
 import { createRemoteAuthMessageHandler } from './remote-auth.js'
 
 const DEFAULT_PORT = 18795
+const executorInstanceId = crypto.randomUUID()
+const executorInfo = () => ({extensionVersion:chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version, runtimeId:executorInstanceId, protocolVersion:PROTOCOL_VERSION, features:FEATURES})
 const DEFAULT_REMOTE_HOST = 'https://relay.linso.ai'
 // Soft-detach a tab's debugger after this many idle seconds so Chrome's
 // "started debugging this browser" infobar disappears while inactive.
@@ -259,7 +262,7 @@ async function ensureRelayConnection() {
     // npm upgrade while Chrome kept the old code in memory. Reload once per
     // relay version to pick up the new files — the guard prevents a reload
     // loop when the extension is loaded from elsewhere (e.g. a dev checkout).
-    const myVersion = chrome.runtime.getManifest().version
+    const myVersion = chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version
     if (relayInfo?.version && relayInfo.version !== myVersion) {
       const stored = await chrome.storage.local.get('reloadedForRelayVersion')
       if (stored.reloadedForRelayVersion !== relayInfo.version) {
@@ -284,6 +287,7 @@ async function ensureRelayConnection() {
       ws.onclose = (ev) => { clearTimeout(t); reject(new Error(`WebSocket closed (${ev.code})`)) }
     })
 
+    sendToRelay({method:'BrowserRelay.hello',params:executorInfo()})
     ws.onclose = () => { if (ws !== relayWs) return; onRelayClosed('closed') }
     ws.onerror = () => { if (ws !== relayWs) return; onRelayClosed('error') }
   })()
@@ -301,6 +305,7 @@ async function ensureRelayConnection() {
 }
 
 function onRelayClosed(reason) {
+  automation.disconnect("local")
   relayWs = null
 
   for (const [id, p] of pending.entries()) {
@@ -476,7 +481,7 @@ async function onRelayMessage(text) {
       const result = await handleForwardCdpCommand(msg)
       sendToRelay({ id: msg.id, result })
     } catch (err) {
-      sendToRelay({ id: msg.id, error: err instanceof Error ? err.message : String(err) })
+      sendToRelay({ id: msg.id, error: {message:err instanceof Error ? err.message : String(err),code:err.code,status:err.status} })
     }
   }
 }
@@ -697,6 +702,14 @@ async function handleForwardCdpCommand(msg) {
   if (method === 'BrowserRelay.download') return await startBrowserDownload(params)
   if (method === 'BrowserRelay.searchDownloads') return await searchBrowserDownloads(params)
 
+  // Browser metadata is independent of any tab lease. Do not evaluate page JS
+  // in an arbitrary tab just to let a CDP client negotiate its connection.
+  if (method === 'Browser.getVersion') return {
+    protocolVersion: '1.3',
+    product: navigator.userAgent.match(/(?:HeadlessChrome|Chrome)\/[\d.]+/)?.[0] || 'Chrome/0.0.0.0',
+    revision: 'browser-relay', userAgent: navigator.userAgent, jsVersion: 'V8',
+  }
+
   const bySession = sessionId ? getTabBySessionId(sessionId) : null
   const targetId = typeof params?.targetId === 'string' ? params.targetId : undefined
 
@@ -719,6 +732,7 @@ async function handleForwardCdpCommand(msg) {
   const tabId = bySession?.tabId || (targetId ? getTabByTargetId(targetId) : null) || (() => { for (const [id, tab] of tabs.entries()) { if (tab.state === 'connected') return id } return null })()
 
   if (!tabId) throw new Error(`No attached tab for method ${method}`)
+  automation.sessions.check(tabId, undefined)
 
   const activeTab = tabs.get(tabId)
   if (activeTab) {
@@ -951,6 +965,7 @@ chrome.alarms.create('relay-keepalive', { periodInMinutes: 0.5 })
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== 'relay-keepalive') return
+  automation.sessions.sweep()
   await initPromise
 
   for (const [tabId, tab] of tabs.entries()) {
@@ -1068,7 +1083,8 @@ async function ensureRemoteHubConnection() {
       version: chrome.runtime.getManifest().version,
       routeId: cfg.remoteRouteId,
       deviceName: 'Browser Relay',
-      capabilities: ['tabs', 'eval', 'wait', 'snapshot', 'click', 'type', 'key', 'scroll', 'navigate', 'screenshot', 'console', 'network', 'observe', 'actions', 'tasks', 'refs', 'frames'],
+      capabilities: [...new Set(['eval','wait','snapshot','click','type','key','scroll','navigate','screenshot','console','network',...FEATURES])],
+      executor: executorInfo(),
     }))
 
     ws.onclose = () => { if (ws !== remoteWs) return; onRemoteHubClosed('closed') }
@@ -1094,6 +1110,7 @@ async function ensureRemoteHubConnection() {
 }
 
 function onRemoteHubClosed(reason) {
+  automation.disconnect('remote')
   remoteWs = null
   remoteAuthenticated = false
   remoteConnectedAt = null
@@ -1202,11 +1219,12 @@ async function executeRemoteApi(method, path, body) {
   const payload = body && typeof body === 'object' ? body : {}
 
   if (isAutomationPath(p)) {
-    try { const result = await automation.request(method, path, payload); return {status:result.ok===false ? result.status || 400 : 200,body:result} }
+    try { const result = await automation.request(method, path, payload, 'remote'); return {status:result.ok===false ? result.status || 400 : 200,body:result} }
     catch(error) { return apiError(error.code || 'automation_failed', error.message, error.status || 500) }
   }
 
   if (method === 'GET' && p === '/api/tabs') return { status: 200, body: await apiListTabs() }
+  if (!p.startsWith('/api/download')) automation.sessions.check(await resolveRemoteTabId(payload.tabId ?? u.searchParams.get('tabId')), undefined)
   if (method === 'POST' && p === '/api/eval') return { status: 200, body: await apiEval(payload, u.searchParams) }
   if (method === 'POST' && p === '/api/wait') return await apiWait(payload)
   if (method === 'POST' && p === '/api/navigate') return { status: 200, body: await apiNavigate(payload) }
@@ -1720,7 +1738,8 @@ async function apiNetworkClear(body) {
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg?.type === 'getAutomationTasks') {sendResponse({tasks:automation.activeTasks()});return false}
+  if (msg?.type === 'getAutomationTasks') {sendResponse({tasks:automation.activeTasks(),claims:automation.sessions.list()});return false}
+  if (msg?.type === 'stopAutomationSession') {try{automation.sessions.stop(msg.sessionId);sendResponse({ok:true})}catch(error){sendResponse({ok:false,error:error.message})}return false}
   if (msg?.type === 'cancelAutomationTasks') {sendResponse({cancelled:automation.cancelAll()});return false}
   if (msg?.type === 'relayCheck') {
     const { url } = msg
@@ -1748,7 +1767,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       )
       let attachedCount = 0
       for (const t of tabs.values()) if (t.state === 'connected') attachedCount++
-      const { version } = chrome.runtime.getManifest()
+      const manifest = chrome.runtime.getManifest()
+      const version = manifest.version_name || manifest.version
       sendResponse({ connected, connecting, port, attachedCount, lastError: lastConnectError, version })
     })()
     return true
@@ -1790,11 +1810,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return false
 })
 
-function isAutomationPath(path) {
-  return ['/api/observe', '/api/actions', '/api/capabilities', '/api/tabs/create', '/api/tabs/close'].includes(path) || path.startsWith('/api/tasks/')
-}
-
 const automation = createAutomation({
+  runtimeInfo: executorInfo,
+  publicTabId: publicTabIdFor,
   resolveTab: resolveRemoteTabId,
   send: async (tabId, method, params, sessionId) => {
     await ensureRemoteAttached(tabId)
@@ -1808,7 +1826,7 @@ const automation = createAutomation({
     return {tabId:attached.tabId, url}
   },
   closeTab: (tabId) => chrome.tabs.remove(tabId),
-  focusTab: async (tabId) => { await chrome.tabs.update(tabId,{active:true}) },
+  focusTab: async (tabId) => { const tab=await chrome.tabs.get(tabId); await chrome.windows.update(tab.windowId,{focused:true}); await chrome.tabs.update(tabId,{active:true}) },
 })
 
 const initPromise = rehydrateState()

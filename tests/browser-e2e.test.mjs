@@ -173,6 +173,7 @@ test(
     await t.test(
       "persistent JS bindings and original image content",
       async () => {
+        await tab.release();
         const runtime = createScriptRuntime({ request });
         try {
           const a = await runtime.execute({
@@ -245,6 +246,7 @@ test(
     await t.test(
       "Playwright connects over advertised CDP and preserves user tab",
       async () => {
+        await tab.release();
         const connected = await chromium.connectOverCDP(
           `http://127.0.0.1:${env.port}`,
           { timeout: 10000 },
@@ -313,6 +315,7 @@ test(
             chrome.runtime.sendMessage({ type: "enableRemoteControl" }),
           );
           assert.equal(enabled.connected, true);
+          await tab.release();
           const remote = createBrowser({
             request: createTransport({
               remoteDeviceId: `br-${secret}`,
@@ -350,6 +353,7 @@ test(
           }
           await popup.getByRole("button", { name: "取消当前任务" }).click();
           await assert.rejects(() => remote.tasks.wait(job.id), /cancel/i);
+          await remote.dispose();
           assert.equal(await page.locator("#rows li").count(), before + 1);
         } finally {
           await popup.close();

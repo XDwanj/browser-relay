@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { homedir, platform } from "node:os";
 import { DEFAULT_REMOTE_HOST, parseRemoteDeviceId, remoteHttpBase } from "./remote-protocol.js";
 import { runNpxSync } from "./npx-runner.js";
+import { createTransport } from "./sdk.js";
 import { createScriptRuntime } from "./script-runtime.js";
 import { createInterface } from "node:readline";
 import { inspectPosixServiceState, relayStartRemediation } from "./service-state.js";
@@ -572,6 +573,14 @@ async function doctor(args = []) {
 
     if (relay.data.connected === true) {
       add("extension.connection", "pass", "Chrome extension is connected");
+      try {
+        const endpoint=relayDebugUrl(RELAY_URL);endpoint.pathname=endpoint.pathname.replace(/debug$/, 'capabilities');
+        const response=await fetch(endpoint,{signal:AbortSignal.timeout(2500)});
+        const info=await response.json();
+        if(!response.ok || info.protocolVersion!==2 || typeof info.runtimeId!=='string' || !info.features?.includes('read')) throw new Error(info.message || 'Running extension lacks the required reading protocol');
+        add('extension.protocol','pass',`Running Chrome executor ${info.extensionVersion}, protocol ${info.protocolVersion}`,{runtimeId:info.runtimeId,features:info.features});
+        if(info.extensionVersion!==pkg.version)add('extension.version','warn',`Running extension ${info.extensionVersion} differs from CLI ${pkg.version}`,undefined,`Reload the matching extension from: ${EXTENSION_DIR}`);
+      } catch(error) { add('extension.protocol','fail',`Running extension probe failed: ${error.message}`,undefined,`Reload the matching Browser Relay extension from: ${EXTENSION_DIR}`); }
     } else {
       add(
         "extension.connection",
@@ -993,6 +1002,13 @@ Commands:
   uninstall   Unregister the background service
 
 Browser commands:
+  read        Read main content; --ref selects a subtree, --cursor continues without rereading
+  focus       Bring the selected tab and window to the foreground
+  claim       Claim a tab with --session <task>
+  release     Release a tab owned by --session <task>
+  handoff     Transfer a tab with --session <owner> --to <receiver>
+  session     list | heartbeat | stop (use --session)
+  capabilities Verify the running extension protocol and build
   observe     Accessibility snapshot with actionable refs; --diff --session <id>
   actions     Execute ordered actions from --file or --stdin; optional --async
   task        Read a task by id; --cancel stops pending actions
@@ -1259,74 +1275,21 @@ function remoteContextFrom(flags) {
   return { ...parsed, host: remoteHttpBase(host) };
 }
 
-async function remoteRelayRequest(method, path, body) {
-  const ctx = remoteContext;
-  if (!ctx) throw new Error("remote context is not configured");
-  const url = `${ctx.host}/v1/rpc`;
-  const requestBody = {
-    routeId: ctx.routeId,
-    id: `cli_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-    method,
-    path,
-    headers: {},
-    body: body === undefined ? null : body,
-  };
-
-  let response;
-  try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${ctx.secret}` },
-      body: JSON.stringify(requestBody),
-    });
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    const message = `Cannot reach Browser Relay Hub at ${ctx.host}: ${detail}`;
-    throw new RelayRequestError(fallbackErrorPayload(message, { code: "remote_hub_unreachable", retryable: true }), message);
-  }
-
-  const text = await response.text();
-  let data = text;
-  try { data = text ? JSON.parse(text) : null; } catch { /* keep text */ }
-  if (!response.ok) {
-    const payload = data && typeof data === "object"
-      ? data
-      : fallbackErrorPayload(`HTTP ${response.status}`, { code: "remote_http_error", status: response.status });
-    throw new RelayRequestError(payload, `HTTP ${response.status}`);
-  }
-  return data;
-}
-
 function wantsJson(args) {
   return args.includes("--json") || args.includes("-j");
 }
 
-async function relayRequest(method, path, body) {
-  if (remoteContext) return remoteRelayRequest(method, path, body);
-  const url = `${RELAY_URL}${path}`;
-  const options = { method, headers: { "Content-Type": "application/json" } };
-  if (body !== undefined && method !== "GET") options.body = JSON.stringify(body);
-
-  let response;
-  try {
-    response = await fetch(url, options);
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    const message = `Cannot reach Browser Relay at ${RELAY_URL}. Run: browser-relay start (${detail})`;
-    throw new RelayRequestError(fallbackErrorPayload(message, { code: "relay_unreachable", retryable: true }), message);
+async function relayRequest(method, path, body, options = {}) {
+  const request=createTransport({url:RELAY_URL,remoteDeviceId:remoteContext?.remoteDeviceId || '',remoteHost:remoteContext?.host});
+  try { return await request(method,path,body,options); }
+  catch (err) {
+    const payload=err.payload || fallbackErrorPayload(err.message);
+    if(payload.code==='transport_error') {
+      payload.code=remoteContext?'remote_hub_unreachable':'relay_unreachable';
+      payload.message=`Cannot reach Browser Relay${remoteContext?' Hub':''}: ${payload.message}. Run: browser-relay start`;
+    }
+    throw new RelayRequestError(payload,payload.message);
   }
-
-  const text = await response.text();
-  let data = text;
-  try { data = text ? JSON.parse(text) : null; } catch { /* keep text */ }
-
-  if (!response.ok) {
-    const payload = data && typeof data === "object"
-      ? data
-      : fallbackErrorPayload(`HTTP ${response.status}`, { code: "http_error", status: response.status });
-    throw new RelayRequestError(payload, `HTTP ${response.status}`);
-  }
-  return data;
 }
 
 function printData(data, json) {
@@ -1425,28 +1388,52 @@ async function browserApiCommand(cmd, args) {
   remoteContext = remoteContextFrom(flags);
 
   switch (cmd) {
+    case 'read':
     case 'observe': {
-      const result=await relayRequest('POST','/api/observe',{tabId:tabIdFrom(flags),sessionId:flagValue(flags,'session'),diff:flagBool(flags,'diff'),includeNodes:flagBool(flags,'include-nodes'),maxLength:flagValue(flags,'max-length')?Number(flagValue(flags,'max-length')):undefined});
+      const result=await relayRequest('POST',cmd==='read'?'/api/read':'/api/observe',{tabId:tabIdFrom(flags),sessionId:flagValue(flags,'session'),mode:flagValue(flags,'mode'),fullPage:flagBool(flags,'full-page'),cursor:flagValue(flags,'cursor'),target:flagValue(flags,'ref')?{ref:flagValue(flags,'ref')}:undefined,diff:flagBool(flags,'diff'),includeNodes:flagBool(flags,'include-nodes'),maxLength:flagValue(flags,'max-length')?Number(flagValue(flags,'max-length')):undefined});
       ensureOk(result,json);
       if(json)return printData(result,true);
-      console.log(`${result.title}\n${result.url}\n${result.snapshot}`);return;
+      if(result.snapshot!==undefined)console.log(`${result.title}\n${result.url}\n${result.snapshot}`);
+      const shot=result.screenshot || (result.format==='png'?result:null);
+      if(shot){const dest=flagValue(flags,'output');if(!dest)throw new Error('Use --output <png> or --json for image observations');writeFileSync(dest,Buffer.from(shot.data,'base64'));const {data,...metadata}=shot;console.log(`Saved screenshot: ${dest}`);printData(metadata,true)}
+      if(result.truncated)console.log(`\n[More content: ${result.nextCursor ? '--cursor '+result.nextCursor : 'select a smaller subtree with --ref'}]`);
+      for(const warning of result.warnings||[])console.log(`[${warning.code}] ${warning.message}`);
+      return;
     }
+    case 'capabilities': return printData(await relayRequest('GET','/api/capabilities'),true);
+    case 'focus':
+    case 'claim':
+    case 'release':
+    case 'handoff': return printData(await relayRequest('POST',`/api/tabs/${cmd}`,{tabId:requireValue(tabIdFrom(flags)||positional[0],'tab id is required'),sessionId:flagValue(flags,'session'),toSessionId:flagValue(flags,'to'),label:flagValue(flags,'label')}),true);
+    case 'session': return printData(await relayRequest(positional[0]==='list'?'GET':'POST','/api/sessions',positional[0]==='list'?undefined:{sessionId:requireValue(flagValue(flags,'session'),'--session is required'),action:positional[0]}),true);
     case 'actions': {
       const actions=JSON.parse(readInput(flags,positional,'actions','actions JSON'));
-      const result=await relayRequest('POST','/api/actions',{tabId:tabIdFrom(flags),actions,observe:flagValue(flags,'observe')||'snapshot',async:flagBool(flags,'async'),sessionId:flagValue(flags,'session')});
+      const result=await relayRequest('POST','/api/actions',{tabId:tabIdFrom(flags),actions,observe:flagValue(flags,'observe')||'snapshot',async:flagBool(flags,'async'),timeoutMs:flagValue(flags,'timeout')?Number(flagValue(flags,'timeout')):undefined,maxLength:flagValue(flags,'max-length')?Number(flagValue(flags,'max-length')):undefined,sessionId:flagValue(flags,'session')});
       ensureOk(result,json);return printData(result,true);
     }
     case 'task': {
       const id=requireValue(positional[0],'task id is required');
-      return printData(await relayRequest(flagBool(flags,'cancel')?'POST':'GET',`/api/tasks/${encodeURIComponent(id)}${flagBool(flags,'cancel')?'/cancel':''}`,flagBool(flags,'cancel')?{}:undefined),true);
+      return printData(await relayRequest(flagBool(flags,'cancel')?'POST':'GET',`/api/tasks/${encodeURIComponent(id)}${flagBool(flags,'cancel')?'/cancel':''}?sessionId=${encodeURIComponent(flagValue(flags,'session')||'')}`,flagBool(flags,'cancel')?{sessionId:flagValue(flags,'session')}:undefined),true);
     }
-    case 'new-tab':return printData(await relayRequest('POST','/api/tabs/create',{url:positional[0]||'about:blank'}),true);
-    case 'close-tab':return printData(await relayRequest('POST','/api/tabs/close',{tabId:requireValue(tabIdFrom(flags)||positional[0],'tab id is required')}),true);
+    case 'new-tab':return printData(await relayRequest('POST','/api/tabs/create',{url:positional[0]||'about:blank',sessionId:flagValue(flags,'session')}),true);
+    case 'close-tab':return printData(await relayRequest('POST','/api/tabs/close',{tabId:requireValue(tabIdFrom(flags)||positional[0],'tab id is required'),sessionId:flagValue(flags,'session')}),true);
     case 'exec':
     case 'repl': {
       const runtime=createScriptRuntime({request:relayRequest});
       const execute=async(input)=>{
         const result=await runtime.execute(input);
+        // A one-shot exec closes its runtime below. Drain cached output before
+        // closing so it never returns a continuation that has already expired.
+        if(cmd==='exec') {
+          while(result.runtimeOutput?.nextCursor && !result.runtimeOutput.code) {
+            const cursor=result.runtimeOutput.nextCursor;
+            result.content.pop(); // replace this page's continuation control block
+            const page=await runtime.execute({code:`readOutput(${JSON.stringify(cursor)})`});
+            result.content.push(...page.content);
+            result.isError ||= page.isError;
+            result.runtimeOutput=page.runtimeOutput;
+          }
+        }
         if(cmd==='repl')console.log(JSON.stringify(result));
         else if(json)printData(result,true);
         else for(const item of result.content) {
@@ -1758,6 +1745,13 @@ switch (cmd) {
   case "uninstall": await uninstall(); break;
   case "remote": remoteCommand(process.argv.slice(3)); break;
   case "tabs":
+  case "read":
+  case "capabilities":
+  case "focus":
+  case "claim":
+  case "release":
+  case "handoff":
+  case "session":
   case "observe":
   case "actions":
   case "task":

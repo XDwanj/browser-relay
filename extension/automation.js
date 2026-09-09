@@ -1,4 +1,7 @@
 import { createTaskQueue, TaskError, checkCancelled, pause } from "./tasks.js";
+import { observationRecords, textPage } from "./observations.js";
+import { createSessions } from "./sessions.js";
+import { PROTOCOL_VERSION, FEATURES } from "./protocol.js";
 
 const valueOf = (v) => v?.value;
 const compact = (s, n = 180) =>
@@ -29,6 +32,7 @@ const ACTIONS = new Set([
   "select",
   "check",
   "navigate",
+  "focus",
 ]);
 const NODE_FUNCTION = `function(operation, args) {
   if (!this.isConnected) return {error:'stale_ref'};
@@ -104,10 +108,21 @@ export function createAutomation({
   closeTab,
   listTabs,
   focusTab,
+  runtimeInfo = () => ({}),
+  publicTabId = (id) => id,
 }) {
   const states = new Map(),
     children = new Map(),
     queue = createTaskQueue();
+  const sessions = createSessions({
+    cancelTab: queue.cancelTab,
+    cancelSession: queue.cancelSession,
+    active: queue.active,
+  });
+  const heldInputs = new Map();
+  const signals = new Map(),
+    jobOrigins = new Map(),
+    sessionOrigins = new Map();
   function state(tabId) {
     if (!states.has(tabId))
       states.set(tabId, {
@@ -119,6 +134,7 @@ export function createAutomation({
         baselines: new Map(),
         shots: new Map(),
         sessions: new Map(),
+        documents: new Map(),
       });
     return states.get(tabId);
   }
@@ -126,7 +142,64 @@ export function createAutomation({
     states.delete(tabId);
   }
   async function cdp(tabId, method, params = {}, sessionId) {
-    return send(tabId, method, params, sessionId);
+    const signal = signals.get(tabId);
+    checkCancelled(signal);
+    if (
+      signal &&
+      ["Input.dispatchMouseEvent", "Input.dispatchKeyEvent"].includes(method)
+    ) {
+      if (!heldInputs.has(tabId)) heldInputs.set(tabId, new Map());
+      const held = heldInputs.get(tabId),
+        key =
+          method === "Input.dispatchMouseEvent"
+            ? `mouse:${params.button}`
+            : `key:${params.key}`;
+      if (["mousePressed", "keyDown", "rawKeyDown"].includes(params.type))
+        held.set(key, { method, params });
+    }
+    if (!signal) return send(tabId, method, params, sessionId);
+    const held = heldInputs.get(tabId);
+    return new Promise((resolve, reject) => {
+      const abort = () =>
+        reject(
+          new TaskError(
+            "task_cancelled",
+            "Task cancelled; dispatched input is not replayed",
+            409,
+          ),
+        );
+      signal.addEventListener("abort", abort, { once: true });
+      Promise.resolve()
+        .then(() => {
+          checkCancelled(signal);
+          return send(tabId, method, params, sessionId);
+        })
+        .then((result) => {
+          if (["mouseReleased", "keyUp"].includes(params.type))
+            held?.delete(
+              method === "Input.dispatchMouseEvent"
+                ? `mouse:${params.button}`
+                : `key:${params.key}`,
+            );
+          resolve(result);
+        }, reject)
+        .finally(() => signal.removeEventListener("abort", abort));
+    });
+  }
+  async function releaseInputs(tabId) {
+    const held = heldInputs.get(tabId);
+    heldInputs.delete(tabId);
+    if (!held?.size) return;
+    await Promise.allSettled(
+      [...held.values()].reverse().map(({ method, params }) => {
+        const { text, ...rest } = params;
+        return send(tabId, method, {
+          ...rest,
+          type:
+            method === "Input.dispatchMouseEvent" ? "mouseReleased" : "keyUp",
+        });
+      }),
+    );
   }
   async function evaluate(tabId, expression, sessionId) {
     const r = await cdp(
@@ -156,7 +229,7 @@ export function createAutomation({
     st.sessions.set(frameId, attached.sessionId);
     return attached.sessionId;
   }
-  async function tree(tabId) {
+  async function tree(tabId, includeTarget) {
     const st = state(tabId);
     {
       await cdp(tabId, "Target.setAutoAttach", {
@@ -173,6 +246,50 @@ export function createAutomation({
       warnings = [],
       frameInfo = [];
     const redundantRefs = new Set();
+    const rendererDOM = new Map();
+    async function urlsFor(sessionId) {
+      const key = sessionId || "main";
+      if (!rendererDOM.has(key))
+        rendererDOM.set(
+          key,
+          (async () => {
+            const result = await cdp(
+              tabId,
+              "DOMSnapshot.captureSnapshot",
+              { computedStyles: [] },
+              sessionId,
+            );
+            const urls = new Map(),
+              strings = result.strings;
+            for (const doc of result.documents) {
+              const base = strings[doc.baseURL] || strings[doc.documentURL];
+              for (let i = 0; i < doc.nodes.backendNodeId.length; i++) {
+                const attrs = doc.nodes.attributes[i] || [];
+                for (let j = 0; j < attrs.length; j += 2)
+                  if (strings[attrs[j]] === "href") {
+                    try {
+                      const url = new URL(strings[attrs[j + 1]], base);
+                      if (
+                        ["http:", "https:", "mailto:", "tel:"].includes(
+                          url.protocol,
+                        )
+                      )
+                        urls.set(doc.nodes.backendNodeId[i], url.href);
+                    } catch {}
+                  }
+              }
+            }
+            return urls;
+          })().catch((error) => {
+            warnings.push({
+              code: "link_metadata_unavailable",
+              message: error.message,
+            });
+            return new Map();
+          }),
+        );
+      return rendererDOM.get(key);
+    }
     const visit = async (entry, parent, forcedSession) => {
       const frameId = entry.frame.id;
       let result,
@@ -207,11 +324,28 @@ export function createAutomation({
         url: entry.frame.url,
         sessionId,
       });
+      const urls = (result?.nodes || []).some((n) => valueOf(n.role) === "link")
+        ? await urlsFor(sessionId)
+        : new Map();
       const axNodes = new Map(
         (result?.nodes || []).map((node) => [node.nodeId, node]),
       );
-      for (const node of result?.nodes || []) {
-        if (node.ignored) continue;
+      // CDP returns nodes breadth first. Flatten only after walking childIds,
+      // otherwise children of omitted paragraphs move behind later siblings.
+      const ordered = [], seen = new Set();
+      const walk = (node) => {
+        if (!node || seen.has(node.nodeId)) return;
+        seen.add(node.nodeId);
+        ordered.push(node);
+        for (const id of node.childIds || []) walk(axNodes.get(id));
+      };
+      for (const node of axNodes.values())
+        if (!axNodes.has(node.parentId)) walk(node);
+      for (const node of axNodes.values()) walk(node);
+      for (const node of ordered) {
+        const selectedRoot = includeTarget && includeTarget.backendId === node.backendDOMNodeId &&
+          frameId === (includeTarget.frameId || frames.frameTree.frame.id);
+        if (node.ignored && !selectedRoot) continue;
         const role = valueOf(node.role),
           name = String(valueOf(node.name) || "")
             .replace(/\s+/g, " ")
@@ -224,13 +358,10 @@ export function createAutomation({
             "InlineTextBox",
             "LabelText",
             "paragraph",
-            "form",
-            "list",
-            "listitem",
             "Legend",
             "MenuListPopup",
           ].includes(role) &&
-          !name
+          !name && !selectedRoot
         )
           continue;
         if (role === "InlineTextBox") continue;
@@ -262,7 +393,7 @@ export function createAutomation({
               ["button", "link", "heading", "option"].includes(
                 valueOf(ancestor.role),
               ) &&
-              compact(valueOf(ancestor.name)) === compact(name)
+              String(valueOf(ancestor.name) || "").replace(/\s+/g, " ").trim() === name
             ) {
               redundantRefs.add(ref);
               break;
@@ -289,12 +420,13 @@ export function createAutomation({
         const val =
           role === "textbox" || role === "searchbox"
             ? undefined
-            : compact(valueOf(node.value));
+            : valueOf(node.value);
         nodes.push({
           ref,
           role,
           name,
-          ...(val ? { value: val } : {}),
+          ...(val !== undefined && val !== "" ? { value: val } : {}),
+          ...(urls.has(backendId) ? { url: urls.get(backendId) } : {}),
           ...properties,
           frameId,
         });
@@ -353,6 +485,28 @@ export function createAutomation({
       );
       if (scope) node.within = scope.ref;
     }
+    // Each frame has its own AX root. Join it to the embedding element so a
+    // main/article subtree includes its frames at their actual document position.
+    for (const frame of frameInfo) {
+      if (!frame.parentId) continue;
+      try {
+        const parent = frameInfo.find((f) => f.id === frame.parentId);
+        const owner = await cdp(tabId, "DOM.getFrameOwner", { frameId: frame.id }, parent?.sessionId);
+        const ownerRef = st.nodes.get(`${frame.parentId}:${owner.backendNodeId}`);
+        const root = nodes.find((n) => n.frameId === frame.id && n.role === "RootWebArea");
+        if (!ownerRef || !root) throw new Error("Frame has no accessible embedding element or root");
+        root.parentRef = ownerRef;
+        const ownerKey = `${frame.parentId}:${owner.backendNodeId}`;
+        const outerAncestors = [ownerKey, ...(st.ancestors.get(ownerKey) || [])];
+        for (const node of nodes) {
+          if (node.frameId !== frame.id || !node.ref) continue;
+          const key = `${frame.id}:${st.refs.get(node.ref).backendId}`;
+          st.ancestors.set(key, [...(st.ancestors.get(key) || []), ...outerAncestors]);
+        }
+      } catch (error) {
+        warnings.push({ frameId: frame.id, code: "frame_unattached", message: error.message });
+      }
+    }
     st.frames = frameInfo;
     return {
       ...meta,
@@ -372,32 +526,68 @@ export function createAutomation({
     );
   }
   async function observe(tabId, options = {}) {
+    if (
+      !["snapshot", "read", "both", "screenshot"].includes(
+        options.mode || "snapshot",
+      )
+    )
+      fail("invalid_request", "Unknown observation mode");
+    const st = state(tabId);
+    const maxLength = integer(options.maxLength, 20000, 100, 100000);
+    const saveBaseline = (key, value) => {
+      if ((st.baselines.get(key)?.capturedAt || 0) > value.capturedAt) return;
+      if (st.baselines.size >= 50 && !st.baselines.has(key))
+        st.baselines.delete(st.baselines.keys().next().value);
+      st.baselines.set(key, value);
+    };
+    if (options.cursor) {
+      const match = /^(obs_[\w-]+):(\d+)$/.exec(String(options.cursor));
+      const saved = match && st.documents.get(match[1]);
+      if (!saved)
+        fail(
+          "stale_observation",
+          "Observation expired or navigation invalidated it; read the page again",
+          409,
+        );
+      const offset = Number(match[2]);
+      if (
+        !Number.isSafeInteger(offset) ||
+        offset >= saved.text.length ||
+        offset > saved.seenThrough
+      )
+        fail("invalid_cursor", "Invalid observation cursor");
+      const page = textPage(saved.text, offset, maxLength);
+      saved.seenThrough = Math.max(saved.seenThrough, page.end);
+      if (saved.seenThrough === saved.text.length)
+        saveBaseline(saved.baselineKey, {
+          url: saved.meta.url,
+          records: saved.records,
+          capturedAt: saved.meta.capturedAt,
+        });
+      return {
+        ...saved.meta,
+        ...page,
+        observationId: match[1],
+        nextCursor: page.truncated ? `${match[1]}:${page.end}` : null,
+      };
+    }
     await awaitPaint(tabId);
     if (options.mode === "screenshot") return screenshot(tabId, options);
-    const st = state(tabId),
-      data = await tree(tabId);
-    const maxLength = integer(options.maxLength, 20000, 100, 100000);
+    let root;
+    if (options.target) root = await resolveNode(tabId, options.target);
+    const data = await tree(tabId, root);
+    const capturedAt = Date.now();
+    const rootRef = root && st.nodes.get(`${root.frameId || data.frames[0]?.id}:${root.backendId}`);
+    if (root && !rootRef)
+      fail("stale_ref", "Requested subtree disappeared; observe again", 409);
+    const records = observationRecords(data, { mode: options.mode, rootRef });
     const session = String(options.sessionId || "default").slice(0, 128);
-    const records = new Map(
-      data.nodes
-        .filter((n) => !data.redundantRefs.has(n.ref))
-        .map((node, i) => [
-          node.ref || `text_${i}`,
-          `[${node.ref || "-"}] ${node.role}${node.name ? ` ${JSON.stringify(compact(node.name) + (node.name.length > 180 ? "…" : ""))}` : ""}${Object.entries(
-            node,
-          )
-            .filter(
-              ([k, v]) =>
-                !["ref", "role", "name", "frameId", "parentRef"].includes(k) &&
-                v !== undefined,
-            )
-            .map(([k, v]) => ` ${k}=${JSON.stringify(v)}`)
-            .join(
-              "",
-            )}${node.frameId !== data.frames[0]?.id ? ` frame=${node.frameId}` : ""}`,
-        ]),
-    );
-    const previous = st.baselines.get(session);
+    const baselineKey = JSON.stringify([
+      session,
+      options.mode || "snapshot",
+      rootRef || "page",
+    ]);
+    const previous = st.baselines.get(baselineKey);
     let lines = [...records.values()],
       diff = false;
     if (options.diff === true && previous?.url === data.url) {
@@ -410,26 +600,67 @@ export function createAutomation({
           lines.push(`${previous.records.has(key) ? "~" : "+"} ${line}`);
       if (!lines.length) lines.push("(no changes)");
     }
-    const full = lines.join("\n"),
-      truncated = full.length > maxLength;
-    // A truncated observation must not advance its baseline past unseen content.
-    if (!truncated) {
-      if (st.baselines.size >= 50 && !st.baselines.has(session))
-        st.baselines.delete(st.baselines.keys().next().value);
-      st.baselines.set(session, { url: data.url, records });
-    }
-    return {
+    const text = lines.join("\n"),
+      page = textPage(text, 0, maxLength);
+    if (!page.truncated)
+      saveBaseline(baselineKey, { url: data.url, records, capturedAt });
+    const warnings = [...data.warnings];
+    if (data.background)
+      warnings.push({
+        code: "background_tab",
+        message:
+          "Background pages may defer rendering. Focus explicitly if content does not advance.",
+      });
+    if (data.readyState === "loading")
+      warnings.push({
+        code: "page_loading",
+        message:
+          "Document is still loading; wait for the expected content before reading it as complete.",
+      });
+    const observationId = `obs_${crypto.randomUUID()}`;
+    const meta = {
       ok: true,
       url: data.url,
       title: data.title,
       viewport: data.viewport,
-      snapshot: full.slice(0, maxLength),
+      readyState: data.readyState,
+      background: data.background,
       diff,
-      truncated,
       frames: data.frames,
-      warnings: data.warnings,
+      warnings,
+      capturedAt,
+      totalCharacters: text.length,
+      scope: rootRef || (options.mode === "read" && data.nodes.some((n) => n.role === "main" && n.frameId === data.frames[0]?.id) ? "main" : "page"),
+    };
+    if (page.truncated && text.length <= 4_000_000) {
+      while (st.documents.size >= 3)
+        st.documents.delete(st.documents.keys().next().value);
+      st.documents.set(observationId, {
+        meta,
+        text,
+        records,
+        baselineKey,
+        seenThrough: page.end,
+      });
+    } else if (page.truncated)
+      warnings.push({
+        code: "observation_too_large",
+        message:
+          "Read a smaller subtree using target; the page exceeds the continuation cache limit.",
+      });
+    const result = {
+      ...meta,
+      ...page,
+      observationId,
+      nextCursor:
+        page.truncated && st.documents.has(observationId)
+          ? `${observationId}:${page.end}`
+          : null,
       ...(options.includeNodes ? { nodes: data.nodes } : {}),
     };
+    if (options.mode === "both")
+      result.screenshot = await screenshot(tabId, options);
+    return result;
   }
   async function nodeCall(tabId, node, operation, args = {}) {
     let objectId;
@@ -806,11 +1037,40 @@ export function createAutomation({
   async function perform(tabId, action, signal) {
     checkCancelled(signal);
     const type = action.type;
+    if (type === "focus") {
+      await focusTab(tabId);
+      await awaitPaint(tabId);
+      return { focused: true };
+    }
     if (type === "navigate") {
+      const before = await cdp(tabId, "Page.getFrameTree");
       const result = await cdp(tabId, "Page.navigate", { url: action.url });
       if (result.errorText) fail("navigation_failed", result.errorText, 422);
       invalidate(tabId);
-      return { navigated: true };
+      const deadline = Date.now() + (action.timeoutMs || 10000);
+      while (result.loaderId && action.waitUntil !== "commit") {
+        checkCancelled(signal);
+        try {
+          const frames = await cdp(tabId, "Page.getFrameTree");
+          const meta = await evaluate(tabId, metadataExpression);
+          if (
+            frames.frameTree.frame.loaderId !==
+              before.frameTree.frame.loaderId &&
+            meta.readyState !== "loading"
+          )
+            break;
+        } catch (error) {
+          if (error.code === "task_cancelled") throw error;
+        }
+        if (Date.now() >= deadline)
+          fail(
+            "navigation_timeout",
+            "Navigation started but document readiness timed out; inspect current state before continuing",
+            408,
+          );
+        await pause(50, signal);
+      }
+      return { navigated: true, waitUntil: action.waitUntil || "interactive" };
     }
     if (type === "key") {
       await key(tabId, action.key);
@@ -941,24 +1201,63 @@ export function createAutomation({
         );
     }
     if (type === "scroll") {
-      if (node && rect.background)
-        return {
-          scrolled: true,
-          strategy: "dom",
-          ...(await nodeCall(tabId, node, "scroll", action)),
-        };
-      const at = node ? { x: rect.x, y: rect.y } : await point(tabId, action);
-      const offset = node
-        ? await frameOffset(tabId, node.frameId)
-        : { x: 0, y: 0 };
-      await cdp(tabId, "Input.dispatchMouseEvent", {
-        type: "mouseWheel",
-        x: at.x + offset.x,
-        y: at.y + offset.y,
-        deltaX: action.deltaX || 0,
-        deltaY: action.deltaY || 0,
-      });
-      return { scrolled: true };
+      let before = await evaluate(tabId, metadataExpression);
+      if (before.background) {
+        if (!action.allowFocus)
+          fail(
+            "needs_foreground",
+            "Background pages can defer feed rendering; use focus or allowFocus:true before scrolling",
+            409,
+          );
+        await focusTab(tabId);
+        await awaitPaint(tabId);
+        before = await evaluate(tabId, metadataExpression);
+      }
+      const beforeText = action.waitForChange
+        ? await evaluate(
+            tabId,
+            "(document.querySelector('main')||document.body).innerText",
+          )
+        : undefined;
+      if (node) await nodeCall(tabId, node, "scroll", action);
+      else {
+        const at = await point(tabId, action);
+        await cdp(tabId, "Input.dispatchMouseEvent", {
+          type: "mouseWheel",
+          x: at.x,
+          y: at.y,
+          deltaX: action.deltaX || 0,
+          deltaY: action.deltaY || 0,
+        });
+      }
+      await awaitPaint(tabId);
+      let contentChanged;
+      if (action.waitForChange) {
+        const deadline = Date.now() + (action.timeoutMs || 1500);
+        do {
+          contentChanged =
+            (await evaluate(
+              tabId,
+              "(document.querySelector('main')||document.body).innerText",
+            )) !== beforeText;
+          if (contentChanged || Date.now() >= deadline) break;
+          await pause(50, signal);
+        } while (true);
+      }
+      const after = await evaluate(tabId, metadataExpression);
+      return {
+        scrolled: true,
+        viewportMoved:
+          before.viewport.scrollY !== after.viewport.scrollY ||
+          before.viewport.scrollX !== after.viewport.scrollX,
+        ...(contentChanged === undefined ? {} : { contentChanged }),
+        ...(contentChanged === false
+          ? {
+              warning:
+                "No text change observed; the feed may be unchanged or at its end. Do not count this as new content.",
+            }
+          : {}),
+      };
     }
     if (
       node &&
@@ -1150,65 +1449,173 @@ export function createAutomation({
           fail("invalid_action", "Scroll delta must be within ±10000");
     }
   }
-  async function request(method, path, body = {}) {
+  async function request(method, path, body = {}, transport = "local") {
+    const startJob = (...args) => {
+      const job = queue.start(...args);
+      jobOrigins.set(job.id, transport);
+      job.done.finally(() => jobOrigins.delete(job.id));
+      return job;
+    };
     const u = new URL(path, "http://relay.local"),
       p = u.pathname,
       options = method === "GET" ? Object.fromEntries(u.searchParams) : body;
+    const sessionId = options.sessionId;
+    if (sessionId) {
+      if (typeof sessionId !== "string" || !/^[\w.-]{1,128}$/.test(sessionId))
+        fail("invalid_session", "Invalid session id");
+      if (!sessionOrigins.has(sessionId) && sessionOrigins.size >= 500)
+        sessionOrigins.delete(sessionOrigins.keys().next().value);
+      sessionOrigins.set(sessionId, transport);
+    }
+    const publicClaim = (c) => c && { ...c, tabId: publicTabId(c.tabId) };
+    const own = (tabId) => {
+      sessions.check(tabId, sessionId);
+      if (sessionId) sessions.claim(tabId, sessionId);
+    };
     if (method === "GET" && p === "/api/capabilities")
       return {
         ok: true,
-        protocolVersion: 2,
-        features: [
-          "observe",
-          "ax",
-          "refs",
-          "frames",
-          "shadow-dom",
-          "diff",
-          "actions",
-          "tasks",
-          "coordinates",
-          "drag",
-          "hover",
-          "screenshot-mapping",
-          "scoped-targets",
-          "action-readiness-wait",
-          "aria-check",
-          "tabs",
-        ],
+        protocolVersion: PROTOCOL_VERSION,
+        features: FEATURES,
         maxActions: 100,
+        ...runtimeInfo(),
       };
+    if (p === "/api/sessions") {
+      if (method === "GET")
+        return { ok: true, claims: sessions.list().map(publicClaim) };
+      if (body.action === "heartbeat")
+        return { ok: true, ...sessions.touch(sessionId) };
+      if (body.action === "stop") {
+        sessionOrigins.delete(sessionId);
+        return {
+          ok: true,
+          released: sessions.stop(sessionId).map(publicClaim),
+        };
+      }
+      fail("invalid_request", "Session action must be heartbeat or stop");
+    }
+    if (p === "/api/session/check") {
+      sessions.check(await resolveTab(options.tabId), sessionId);
+      return { ok: true };
+    }
+    if (
+      ["/api/tabs/claim", "/api/tabs/release", "/api/tabs/handoff"].includes(
+        p,
+      ) &&
+      method === "POST"
+    ) {
+      const tabId = await resolveTab(body.tabId);
+      const claim = p.endsWith("/claim")
+        ? sessions.claim(tabId, sessionId, { label: body.label })
+        : p.endsWith("/release")
+          ? sessions.release(tabId, sessionId)
+          : sessions.handoff(tabId, sessionId, body.toSessionId);
+      return { ok: true, claim: publicClaim(claim) };
+    }
     const taskMatch = p.match(/^\/api\/tasks\/([^/]+)(\/cancel)?$/);
-    if (taskMatch)
+    if (taskMatch) {
+      let task;
+      try {
+        task = queue.get(taskMatch[1]);
+      } catch (error) {
+        if (
+          error.code === "task_not_found" &&
+          method === "POST" &&
+          taskMatch[2]
+        )
+          return {
+            ok: true,
+            task: queue.cancel(taskMatch[1], "task_cancelled", sessionId),
+          };
+        throw error;
+      }
+      if (task.sessionId && task.sessionId !== sessionId)
+        fail("task_owned", "Task belongs to another session", 409);
       return {
         ok: true,
         task:
-          method === "POST" && taskMatch[2]
-            ? queue.cancel(taskMatch[1])
-            : queue.get(taskMatch[1]),
+          method === "POST" && taskMatch[2] ? queue.cancel(taskMatch[1]) : task,
       };
-    if (p === "/api/tabs/create" && method === "POST")
-      return { ok: true, ...(await createTab(body.url || "about:blank")) };
+    }
+    if (p === "/api/tabs/create" && method === "POST") {
+      if (sessionId) sessions.touch(sessionId);
+      const created = await createTab(body.url || "about:blank");
+      if (sessionId)
+        sessions.claim(await resolveTab(created.tabId), sessionId, {
+          created: true,
+        });
+      return { ok: true, ...created };
+    }
+    if (p === "/api/tabs/focus" && method === "POST")
+      return request("POST", "/api/actions", {
+        ...body,
+        actions: [{ type: "focus" }],
+      }, transport);
+    if (p === "/api/evaluate" && method === "POST") {
+      if (typeof body.expression !== "string")
+        fail("invalid_request", "expression is required");
+      const tabId = await resolveTab(body.tabId);
+      own(tabId);
+      const job = startJob(
+        tabId,
+        async (_, signal) => {
+          signals.set(tabId, signal);
+          try {
+            return { ok: true, value: await evaluate(tabId, body.expression) };
+          } finally {
+            signals.delete(tabId);
+          }
+        },
+        20000,
+        body.taskId,
+        sessionId,
+      );
+      const result = await job.done;
+      if (result.error)
+        throw new TaskError(
+          result.error.code,
+          result.error.message,
+          result.error.status,
+        );
+      return result.observation;
+    }
     if (p === "/api/tabs/close" && method === "POST") {
       const tabId = await resolveTab(body.tabId);
-      queue.cancelTab(tabId);
+      own(tabId);
+      if (queue.active().some((job) => job.tabId === tabId))
+        fail("tab_busy", "Cancel and await tasks before closing the tab", 409);
       invalidate(tabId);
       await closeTab(tabId);
+      sessions.forget(tabId);
       return { ok: true };
     }
-    if (p === "/api/observe") {
+    if (p === "/api/observe" || p === "/api/read") {
       const tabId = await resolveTab(options.tabId);
-      const job = queue.start(tabId, () =>
-        observe(tabId, {
-          ...options,
-          diff: options.diff === true || options.diff === "true",
-          includeNodes:
-            options.includeNodes === true || options.includeNodes === "true",
-          maxLength:
-            options.maxLength === undefined
-              ? undefined
-              : Number(options.maxLength),
-        }),
+      own(tabId);
+      const job = startJob(
+        tabId,
+        async (_, signal) => {
+          signals.set(tabId, signal);
+          try {
+            return await observe(tabId, {
+              ...options,
+              mode: p === "/api/read" ? "read" : options.mode,
+              diff: options.diff === true || options.diff === "true",
+              includeNodes:
+                options.includeNodes === true ||
+                options.includeNodes === "true",
+              maxLength:
+                options.maxLength === undefined
+                  ? undefined
+                  : Number(options.maxLength),
+            });
+          } finally {
+            signals.delete(tabId);
+          }
+        },
+        20000,
+        options.taskId,
+        sessionId,
       );
       const result = await job.done;
       if (result.error)
@@ -1222,45 +1629,59 @@ export function createAutomation({
     if (p === "/api/actions" && method === "POST") {
       validate(body.actions);
       if (
-        !["none", "snapshot", "screenshot"].includes(body.observe || "snapshot")
+        !["none", "snapshot", "read", "screenshot", "both"].includes(
+          body.observe || "snapshot",
+        )
       )
         fail(
           "invalid_request",
-          "observe must be none, snapshot, or screenshot",
+          "observe must be none, snapshot, read, screenshot, or both",
         );
       if (!body.tabId)
         fail("invalid_request", "Explicit tabId is required for actions");
       const tabId = await resolveTab(body.tabId),
         timeoutMs = integer(body.timeoutMs, 20000, 1, 120000);
+      own(tabId);
       if (timeoutMs > 20000 && body.async !== true)
         fail(
           "async_required",
           "Tasks longer than 20 seconds must use async:true",
         );
-      const { id, done } = queue.start(
+      const { id, done } = startJob(
         tabId,
         async (job, signal) => {
-          for (const action of body.actions) {
-            checkCancelled(signal);
-            const start = Date.now(),
-              result = await perform(tabId, action, signal);
-            job.results.push({
-              type: action.type,
-              elapsedMs: Date.now() - start,
-              ...result,
-            });
-          }
-          checkCancelled(signal);
-          return body.observe === "none"
-            ? undefined
-            : await observe(tabId, {
-                mode: body.observe,
-                sessionId: body.sessionId,
-                diff: body.diff !== false,
+          sessions.check(tabId, sessionId);
+          signals.set(tabId, signal);
+          try {
+            for (const [index, action] of body.actions.entries()) {
+              checkCancelled(signal);
+              job.currentAction = { index, type: action.type };
+              const start = Date.now(),
+                result = await perform(tabId, action, signal);
+              job.results.push({
+                type: action.type,
+                elapsedMs: Date.now() - start,
+                ...result,
               });
+              job.currentAction = undefined;
+            }
+            checkCancelled(signal);
+            return body.observe === "none"
+              ? undefined
+              : await observe(tabId, {
+                  mode: body.observe,
+                  sessionId: body.sessionId,
+                  diff: body.diff !== false,
+                  maxLength: body.maxLength,
+                });
+          } finally {
+            await releaseInputs(tabId);
+            signals.delete(tabId);
+          }
         },
         timeoutMs,
         body.taskId,
+        sessionId,
       );
       if (body.async === true) return { ok: true, task: queue.get(id) };
       const task = await done;
@@ -1289,6 +1710,17 @@ export function createAutomation({
     screenshot,
     invalidate,
     activeTasks: queue.active,
+    sessions,
+    disconnect: (transport = "local") => {
+      for (const job of queue.active())
+        if (jobOrigins.get(job.id) === transport)
+          queue.cancel(job.id, "extension_disconnected");
+      for (const [id, origin] of sessionOrigins)
+        if (origin === transport) {
+          sessions.stop(id, "extension_disconnected");
+          sessionOrigins.delete(id);
+        }
+    },
     cancelAll: queue.cancelAll,
     attachChild: (tabId, entry) => {
       if (!children.has(tabId)) children.set(tabId, new Map());
@@ -1300,6 +1732,7 @@ export function createAutomation({
     },
     close: (tabId) => {
       invalidate(tabId);
+      sessions.forget(tabId);
       children.delete(tabId);
       queue.cancelTab(tabId);
     },

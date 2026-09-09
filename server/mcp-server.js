@@ -12,6 +12,12 @@
  *   BROWSER_RELAY_URL=http://127.0.0.1:18795 node mcp-server.js
  */
 import { readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { createTransport } from "./sdk.js";
+import { isAutomationPath, isTaskRequest } from "../extension/protocol.js";
+const callContext=new AsyncLocalStorage(), calls=new Map(), ownedSessions=new Set();
+const defaultSession=`mcp-${randomUUID()}`;
 import { DEFAULT_REMOTE_HOST, parseRemoteDeviceId, remoteHttpBase } from "./remote-protocol.js";
 import { createScriptRuntime, EXEC_DESCRIPTION } from "./script-runtime.js";
 
@@ -35,70 +41,32 @@ function remoteContextFromEnv() {
   }
 }
 
-async function remoteRelayRequest(ctx, method, path, body) {
-  const requestBody = {
-    routeId: ctx.routeId,
-    id: `mcp_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-    method,
-    path,
-    headers: {},
-    body: body === undefined ? null : body,
-  };
-
-  let res;
-  try {
-    res = await fetch(`${ctx.host}/v1/rpc`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${ctx.secret}` },
-      body: JSON.stringify(requestBody),
-    });
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    const message = `Cannot reach Browser Relay Hub at ${ctx.host}: ${detail}`;
-    throw relayToolError(errorPayload("remote_hub_unreachable", message, { status: 0, retryable: true }));
+async function relayRequest(method, path, body, options = {}) {
+  const context=callContext.getStore();
+  if (context?.controller.signal.aborted) throw relayToolError(errorPayload('request_cancelled','Request cancelled',{status:409}));
+  options={...options,signal:options.signal || context?.controller.signal};
+  if(isAutomationPath(path.split('?')[0]) && !path.startsWith('/api/capabilities')) {
+    const existing=new URL(path,'http://relay.local').searchParams.get('sessionId');
+    const sessionId=body?.sessionId || existing || defaultSession;
+    if(method==='GET' && !existing) path+=`${path.includes('?')?'&':'?'}sessionId=${encodeURIComponent(sessionId)}`;
+    if(method==='POST')body={...body,sessionId};
+    if(body?.action==='stop')ownedSessions.delete(sessionId);else ownedSessions.add(sessionId);
+    if(method==='POST' && isTaskRequest(method,path.split('?')[0])) {
+      body.taskId ||= `job_${randomUUID()}`;
+      context?.tasks.push({id:body.taskId,sessionId});
+    }
   }
-
-  const text = await res.text();
-  let data = text;
-  try { data = text ? JSON.parse(text) : null; } catch { /* keep text */ }
-  if (!res.ok) {
-    const payload = data && typeof data === "object"
-      ? data
-      : errorPayload("remote_http_error", `HTTP ${res.status}`, { status: res.status });
-    throw relayToolError(payload);
-  }
-  if (data?.ok === false) throw relayToolError(data);
-  return data;
-}
-
-async function relayRequest(method, path, body) {
   const remoteContext = remoteContextFromEnv();
-  if (remoteContext) return remoteRelayRequest(remoteContext, method, path, body);
-  const url = `${RELAY_URL}${path}`;
-  const headers = { "Content-Type": "application/json" };
-  const opts = { method, headers };
-  if (body !== undefined && method !== "GET") opts.body = JSON.stringify(body);
-  let res;
-  try {
-    res = await fetch(url, opts);
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    const message = `Cannot reach Browser Relay at ${RELAY_URL}: ${detail}`;
-    throw relayToolError(errorPayload("relay_unreachable", message, { status: 0, retryable: true }));
-  }
-
-  const text = await res.text();
-  let data = text;
-  try { data = text ? JSON.parse(text) : null; } catch { /* keep text */ }
-
-  if (!res.ok) {
-    const payload = data && typeof data === "object"
-      ? data
-      : errorPayload("http_error", `HTTP ${res.status}`, { status: res.status });
+  const transport = createTransport({url:RELAY_URL,remoteDeviceId:remoteContext?.remoteDeviceId || '',remoteHost:remoteContext?.host});
+  try { return await transport(method,path,body,options); }
+  catch (err) {
+    const payload=err.payload || errorPayload('mcp_tool_error',err.message);
+    if(payload.code==='transport_error') {
+      payload.code=remoteContext?'remote_hub_unreachable':'relay_unreachable';
+      payload.message=`Cannot reach Browser Relay${remoteContext?' Hub':''}: ${payload.message}`;
+    }
     throw relayToolError(payload);
   }
-  if (data?.ok === false) throw relayToolError(data);
-  return data;
 }
 
 async function relayGet(path) { return relayRequest("GET", path); }
@@ -397,11 +365,14 @@ const TOOLS = [
   },
 ];
 
-const scriptRuntime = createScriptRuntime({request:relayRequest});
+const scriptRuntime = createScriptRuntime({request:(...args)=>callContext.exit(()=>relayRequest(...args))});
 TOOLS.push(
-  {name:'browser_observe',description:'Read current accessibility state with actionable refs, frame IDs and viewport. Use diff=true within one session to reduce unchanged output. Screenshot mode returns an image and coordinate mapping.',inputSchema:{type:'object',properties:{tabId:{type:'string'},sessionId:{type:'string'},mode:{type:'string',enum:['snapshot','screenshot']},diff:{type:'boolean'},maxLength:{type:'integer'},fullPage:{type:'boolean'}},required:['tabId']},handler:args=>relayPost('/api/observe',args)},
-  {name:'browser_actions',description:'Execute a short ordered group of known browser actions on one explicit tab, then return updated state. Supported types: click, double_click, hover, move, drag, fill, type, key, scroll, wait, select, check, navigate. target is {ref}, {selector}, or {role,name,frameId?,scope?}. Optional per-action timeoutMs waits for readiness before dispatch; it never repeats dispatched input. wait also supports state=enabled. Coordinates use CSS viewport pixels, or image pixels when screenshotId is supplied. Stops at the first error. async=true returns a cancellable task.',inputSchema:{type:'object',properties:{tabId:{type:'string'},actions:{type:'array',items:{type:'object'},minItems:1,maxItems:100},observe:{type:'string',enum:['none','snapshot','screenshot']},sessionId:{type:'string'},async:{type:'boolean'},timeoutMs:{type:'integer'}},required:['tabId','actions']},handler:args=>relayPost('/api/actions',args)},
-  {name:'browser_task',description:'Get a browser task or cancel pending actions. Cancellation does not undo completed actions.',inputSchema:{type:'object',properties:{id:{type:'string'},cancel:{type:'boolean'}},required:['id']},handler:args=>args.cancel?relayPost(`/api/tasks/${encodeURIComponent(args.id)}/cancel`,{}):relayGet(`/api/tasks/${encodeURIComponent(args.id)}`)},
+  {name:'browser_read',description:'Read complete main-page content, preserving semantic groups, full links and actionable refs. target selects an observed subtree. When truncated, follow nextCursor with cursor to finish the same captured observation. Use screenshots if readable content is missing; do not mistake loading states for success.',inputSchema:{type:'object',properties:{tabId:{type:'string'},sessionId:{type:'string'},target:{type:'object'},cursor:{type:'string'},maxLength:{type:'integer'},diff:{type:'boolean'}},required:['tabId']},handler:args=>relayPost('/api/read',args)},
+  {name:'browser_tab',description:'Create, focus, claim, release, handoff, or close a task tab. Another active owner must release or handoff before you operate it. close removes a tab; release only relinquishes ownership. Do not close pre-existing user tabs without authorization.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['create','focus','claim','release','handoff','close']},tabId:{type:'string'},url:{type:'string'},sessionId:{type:'string'},toSessionId:{type:'string'},label:{type:'string'}},required:['action']},handler:args=>relayPost(`/api/tabs/${args.action}`,args)},
+  {name:'browser_session',description:'List tab ownership, renew a session heartbeat, or stop its pending work and release claims. Stopping does not undo actions or close user tabs; a stopped session cannot restart implicitly.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','heartbeat','stop']},sessionId:{type:'string'}},required:['action']},handler:args=>args.action==='list'?relayGet('/api/sessions'):relayPost('/api/sessions',args)},
+  {name:'browser_observe',description:'Read current accessibility state with actionable refs, frame IDs and viewport. Use diff=true within one session to reduce unchanged output. Screenshot mode returns an image and coordinate mapping.',inputSchema:{type:'object',properties:{tabId:{type:'string'},sessionId:{type:'string'},mode:{type:'string',enum:['snapshot','read','screenshot','both']},target:{type:'object'},cursor:{type:'string'},diff:{type:'boolean'},maxLength:{type:'integer'},fullPage:{type:'boolean'}},required:['tabId']},handler:args=>relayPost('/api/observe',args)},
+  {name:'browser_actions',description:'Execute a short ordered group of known browser actions on one explicit tab, then return updated state. Supported types: click, double_click, hover, move, drag, fill, type, key, scroll, wait, select, check, navigate, focus. scroll waitForChange reports text progress; background scroll requires explicit focus. navigate waits for document readiness; add wait for site-specific content. target is {ref}, {selector}, or {role,name,frameId?,scope?}. Optional per-action timeoutMs waits for readiness before dispatch; it never repeats dispatched input. wait also supports state=enabled. Coordinates use CSS viewport pixels, or image pixels when screenshotId is supplied. Stops at the first error. async=true returns a cancellable task.',inputSchema:{type:'object',properties:{tabId:{type:'string'},actions:{type:'array',items:{type:'object'},minItems:1,maxItems:100},observe:{type:'string',enum:['none','snapshot','read','screenshot','both']},sessionId:{type:'string'},async:{type:'boolean'},timeoutMs:{type:'integer'},maxLength:{type:'integer'}},required:['tabId','actions']},handler:args=>relayPost('/api/actions',args)},
+  {name:'browser_task',description:'Get a browser task or cancel pending actions. Cancellation does not undo completed actions.',inputSchema:{type:'object',properties:{id:{type:'string'},cancel:{type:'boolean'},sessionId:{type:'string'}},required:['id']},handler:args=>args.cancel?relayPost(`/api/tasks/${encodeURIComponent(args.id)}/cancel`,{sessionId:args.sessionId}):relayGet(`/api/tasks/${encodeURIComponent(args.id)}?sessionId=${encodeURIComponent(args.sessionId||defaultSession)}`)},
   {name:'browser_exec',description:EXEC_DESCRIPTION,inputSchema:{type:'object',properties:{code:{type:'string'},sessionId:{type:'string'},timeoutMs:{type:'integer'}},required:['code']},handler:args=>scriptRuntime.execute(args)},
   {name:'browser_exec_reset',description:'Reset one persistent JavaScript session and request cancellation of its pending browser tasks. Existing tabs remain open.',inputSchema:{type:'object',properties:{sessionId:{type:'string'}}},handler:async args=>{await scriptRuntime.reset(args.sessionId);return {ok:true};}},
 );
@@ -409,11 +380,13 @@ const toolMap = new Map(TOOLS.map((t) => [t.name, t]));
 
 function toolContent(result) {
   if(Array.isArray(result?.content)) return result;
-  const shot=result?.task?.observation?.data?result.task.observation:result?.data?result:null;
+  const observation=result?.task?.observation || result;
+  const shot=observation?.screenshot || (observation?.data ? observation : null);
   if(shot?.format==='png') {
     const {data,...metadata}=shot;
-    const text=result.task?{...result,task:{...result.task,observation:metadata}}:metadata;
-    return {content:[{type:'image',data,mimeType:'image/png'},{type:'text',text:JSON.stringify(text)}]};
+    const obs=observation.screenshot ? {...observation,screenshot:metadata} : metadata;
+    const value=result.task ? {...result,task:{...result.task,observation:obs}} : obs;
+    return {content:[{type:'image',data,mimeType:'image/png'},{type:'text',text:JSON.stringify(value)}]};
   }
   return {content:[{type:'text',text:JSON.stringify(result)}]};
 }
@@ -445,6 +418,15 @@ async function handleMessage(msg) {
   }
 
   if (method === "notifications/initialized") return;
+  if (method === 'notifications/cancelled') {
+    const context=calls.get(params?.requestId);
+    if(context) {
+      context.controller.abort();
+      if(context.runtimeSession!==undefined)await scriptRuntime.reset(context.runtimeSession);
+      await Promise.allSettled(context.tasks.map(task=>callContext.exit(()=>relayRequest('POST',`/api/tasks/${encodeURIComponent(task.id)}/cancel`,{sessionId:task.sessionId},{timeoutMs:2500}))));
+    }
+    return;
+  }
 
   if (method === "tools/list") {
     return sendResult(id, {
@@ -458,12 +440,17 @@ async function handleMessage(msg) {
     if (!tool) {
       return sendResult(id, { content: [{ type: "text", text: `Unknown tool: ${toolName}` }], isError: true });
     }
+    const context={controller:new AbortController(),tasks:[],...(toolName==='browser_exec'?{runtimeSession:params?.arguments?.sessionId || 'default'}:{})};calls.set(id,context);
     try {
-      const result = await tool.handler(params?.arguments || {});
+      const result = await callContext.run(context,()=>tool.handler(params?.arguments || {}));
       return sendResult(id, toolContent(result));
     } catch (err) {
+      if (context.controller.signal.aborted) {
+        const payload={...toolErrorPayload(err),code:'request_cancelled',message:'Request cancelled; completed actions were not undone',retryable:false};
+        return sendResult(id,{content:[{type:'text',text:JSON.stringify(payload,null,2)}],isError:true});
+      }
       return sendResult(id, { content: [{ type: "text", text: JSON.stringify(toolErrorPayload(err), null, 2) }], isError: true });
-    }
+    } finally {calls.delete(id)}
   }
 
   if (method === "ping") return sendResult(id, {});
@@ -509,5 +496,9 @@ process.stdin.on("data", (chunk) => {
   }
 });
 
-process.stdin.on("end", async () => {await scriptRuntime.close();process.exit(0);});
-process.on('SIGTERM',async()=>{await scriptRuntime.close();process.exit(0);});
+const heartbeat=setInterval(()=>{for(const sessionId of ownedSessions)void relayRequest('POST','/api/sessions',{sessionId,action:'heartbeat'},{timeoutMs:5000}).catch(()=>ownedSessions.delete(sessionId));},40000);
+heartbeat.unref();
+async function shutdown(){clearInterval(heartbeat);for(const context of calls.values())context.controller.abort();await scriptRuntime.close();await Promise.allSettled([...ownedSessions].map(sessionId=>relayRequest('POST','/api/sessions',{sessionId,action:'stop'},{timeoutMs:2500})));process.exit(0)}
+process.stdin.on('end',shutdown);
+process.on('SIGTERM',shutdown);
+process.on('SIGINT',shutdown);

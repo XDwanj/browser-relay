@@ -44,7 +44,17 @@ async function fetchStatus() {
   try {
     const res = await chrome.runtime.sendMessage({ type: 'getStatus' })
     if (res) render(res)
-    const {tasks=[]} = await chrome.runtime.sendMessage({type:'getAutomationTasks'})
+    const {tasks=[],claims=[]} = await chrome.runtime.sendMessage({type:'getAutomationTasks'})
+    document.getElementById('sessions').hidden=claims.length===0
+    const owners=new Map()
+    for(const claim of claims){const group=owners.get(claim.sessionId)||{label:claim.label||claim.sessionId,count:0};group.count++;owners.set(claim.sessionId,group)}
+    const list=document.getElementById('session-list');list.replaceChildren()
+    for(const [sessionId,group] of owners){
+      const row=document.createElement('div');row.className='session'
+      const label=document.createElement('span');label.textContent=`${group.label} · ${group.count} ${t('popupTabsAttached')}`
+      const stop=document.createElement('button');stop.textContent=t('popupStopSession');stop.addEventListener('click',async()=>{stop.disabled=true;await chrome.runtime.sendMessage({type:'stopAutomationSession',sessionId});await fetchStatus()})
+      row.append(label,stop);list.append(row)
+    }
     document.getElementById('task-controls').hidden = tasks.length === 0
     document.getElementById('task-status').textContent = `${tasks.length} ${t('popupActiveTasks')}`
   } catch {

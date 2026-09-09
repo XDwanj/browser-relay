@@ -1,6 +1,7 @@
 name = "browser-relay-hub"
 main = "src/worker.js"
 compatibility_date = "2025-12-01"
+compatibility_flags = ["enable_request_signal"]
 workers_dev = true
 
 # Self-hosters: `wrangler deploy` publishes this to

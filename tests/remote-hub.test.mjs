@@ -344,3 +344,14 @@ test('remote CLI preserves extension wait_timeout details', async (t) => {
   assert.equal(payload.retryable, true);
   assert.equal(payload.details.attempts, 3);
 });
+
+test('raw HTTP disconnect cancels the exact task through the Node hub',async t=>{
+ const port=await getFreePort();await startHub(t,port);
+ const ws=await connectLegacyDevice(t,port,ROUTE_ID,SECRET);
+ const frames=[];ws.on('message',raw=>{const m=JSON.parse(String(raw));if(m.type==='rpc.request')frames.push(m);});
+ const controller=new AbortController();
+ const result=fetch(`http://127.0.0.1:${port}/v1/rpc`,{method:'POST',headers:{Authorization:`Bearer ${SECRET}`,'Content-Type':'application/json'},body:JSON.stringify({routeId:ROUTE_ID,method:'POST',path:'/api/actions',body:{sessionId:'owner',actions:[{type:'key',key:'Enter'}]}}),signal:controller.signal}).catch(e=>e);
+ await waitFor(()=>frames.length===1);controller.abort();await result;
+ await waitFor(()=>frames.length===2);
+ assert.equal(frames[1].path,`/api/tasks/${frames[0].body.taskId}/cancel`);assert.equal(frames[1].body.sessionId,'owner');
+});

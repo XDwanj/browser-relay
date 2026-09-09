@@ -28,7 +28,9 @@
     "docs/README.zh-CN.md",
     "docs/browser-use-comparison.md",
     "docs/browser-use-gap-audit.md",
-    "docs/benchmarks/"
+    "docs/browser-use-parity.md",
+    "docs/benchmarks/",
+    "docs/releases/"
   ],
   "scripts": {
     "start": "node server/relay-server.js",
@@ -39,7 +41,7 @@
     "test": "node --test",
     "pack:dry-run": "npm pack --dry-run",
     "sync-version": "node scripts/sync-version.mjs",
-    "prepublishOnly": "node scripts/sync-version.mjs",
+    "prepublishOnly": "node scripts/check-publish.mjs && node scripts/sync-version.mjs",
     "postinstall": "node server/install.js",
     "postuninstall": "node server/uninstall.js",
     "test:browser": "node scripts/run-browser-tests.mjs",
@@ -64,7 +66,8 @@
   ],
   "license": "MIT",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "latest"
   },
   "dependencies": {
     "ws": "^8.21.1"
