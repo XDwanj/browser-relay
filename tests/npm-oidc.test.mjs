@@ -31,9 +31,9 @@ function runProbe(mode) {
       assert.equal(String(url), 'https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/%40linsoai%2Fbrowser-relay');
       assert.equal(options.method, 'POST');
       assert.equal(options.headers.Authorization, 'Bearer ${secrets[1]}');
-      return { status: ${mode === 'denied' ? 403 : 201}, json: async () => ({
-        token_type: 'oidc', token: '${secrets[2]}', expires: '2099-01-01T00:00:00Z'
-      }) };
+      return { status: ${mode === 'denied' ? 403 : 201}, json: async () => (
+        ${JSON.stringify(mode)} === 'missing-token' ? {} : { token: '${secrets[2]}' }
+      ) };
     };
     await import(${JSON.stringify(script)});
     assert.equal(calls, ${mode === 'missing' ? 0 : mode === 'malformed' ? 1 : 2});
@@ -47,11 +47,12 @@ test('OIDC probe verifies the package grant without publishing or exposing crede
   for (const value of secrets) assert.ok(!(result.stdout + result.stderr).includes(value));
 });
 
-test('OIDC probe rejects missing credentials and npm permission failures', () => {
-  for (const mode of ['missing', 'denied']) {
+test('OIDC probe rejects missing credentials, npm permission failures and empty grants', () => {
+  for (const mode of ['missing', 'denied', 'missing-token']) {
     const result = runProbe(mode);
     assert.equal(result.status, 1);
-    assert.match(result.stderr, mode === 'missing' ? /id-token: write/ : /HTTP 403/);
+    const expected = { missing: /id-token: write/, denied: /HTTP 403/, 'missing-token': /did not return an OIDC grant token/ };
+    assert.match(result.stderr, expected[mode]);
     for (const value of secrets) assert.ok(!(result.stdout + result.stderr).includes(value));
   }
 });

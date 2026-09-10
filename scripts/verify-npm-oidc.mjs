@@ -37,9 +37,10 @@ async function verify() {
     throw new VerificationError(`npm OIDC exchange failed (HTTP ${exchange.status}); check the trusted publisher configuration.`);
   }
   const grant = await exchange.json();
-  if (grant.token_type !== "oidc" || typeof grant.token !== "string" || !grant.token
-      || !(Date.parse(grant.expires) > Date.now())) {
-    throw new VerificationError("npm did not return a valid, unexpired OIDC grant.");
+  // Match npm CLI's lib/utils/oidc.js: only `token` is required.
+  // Registry responses need not include token_type or expiry metadata.
+  if (!grant || typeof grant.token !== "string" || !grant.token) {
+    throw new VerificationError("npm did not return an OIDC grant token.");
   }
 
   // Do not log or persist either credential, including response bodies on errors.
