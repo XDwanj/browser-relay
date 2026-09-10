@@ -420,6 +420,8 @@ Two ways to deal with it:
 
 ## Development
 
+Release setup and manual workflow commands: [Publishing with npm OIDC](docs/publishing.md).
+
 ```bash
 npm install
 npm start

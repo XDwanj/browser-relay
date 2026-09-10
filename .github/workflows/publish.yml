@@ -16,6 +16,11 @@ on:
         options:
           - next
           - latest
+      verify_only:
+        description: Verify OIDC authentication and package contents without publishing
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -43,11 +48,13 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - run: npm install --global npm@12.0.2 --ignore-scripts
       - run: npm ci --ignore-scripts
       - name: Validate explicitly requested version and channel
         env:
@@ -63,8 +70,10 @@ jobs:
           JS
       - run: npm run sync-version
       - run: npm pack --dry-run
+      - name: Verify npm trusts this workflow
+        run: node scripts/verify-npm-oidc.mjs
       - name: Publish explicitly approved version
+        if: ${{ !inputs.verify_only }}
         run: npm publish --access public --provenance --tag "$RELEASE_CHANNEL"
         env:
           RELEASE_CHANNEL: ${{ inputs.channel }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

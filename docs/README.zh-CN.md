@@ -396,6 +396,8 @@ Windows 上，`uninstall` 只移除 Browser Relay 任务及生成的 XML 定义�
 
 ## 本地开发
 
+发布配置与手动触发方式见 [npm OIDC 发布流程](publishing.md)。
+
 ```bash
 npm install
 npm start
