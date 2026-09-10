@@ -142,7 +142,7 @@ browser-relay skill install --agent claude-code
 browser-relay skill install --agent codex claude-code
 ```
 
-The command uses the standard `skills` CLI non-interactively, then reads every target `SKILL.md` back to verify it. Use `--agent universal` for agents that consume the standard `~/.agents/skills` directory, `browser-relay skill path` to inspect the bundled source, or plain `browser-relay skill` to print the legacy Codex install command. After installation, your agent can operate your own browser without opening a separate automation browser.
+The command uses the standard `skills` CLI non-interactively, then reads every target `SKILL.md` back to verify it. Use `--agent universal` for agents that consume the standard `~/.agents/skills` directory, `browser-relay skill path` to inspect the bundled source, or plain `browser-relay skill` to print an install command for all agents (`--agent "*"`). Printing the command does not install anything. After installation, your agent can operate your own browser without opening a separate automation browser.
 
 Give the agent a small read-only task first:
 

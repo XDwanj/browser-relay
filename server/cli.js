@@ -449,12 +449,12 @@ async function doctor(args = []) {
           : "Bundled Agent Skill is readable; no global copy was detected",
       {
         path: SKILL_PATH,
-        installCommand: "browser-relay skill install --agent codex",
+        installCommand: skillInstallCommand(),
         installAgents: [...SKILL_INSTALL_AGENTS],
         installations,
       },
       stale.length
-        ? "Run browser-relay skill help, then reinstall for codex, claude-code, or universal"
+        ? "Run browser-relay skill to print the install command for all agents"
         : undefined,
     );
   } catch {
@@ -748,13 +748,15 @@ function parseSkillAgents(args) {
   return { agents: unique };
 }
 
-function skillInstallCommand(agents = ["codex"]) {
-  return `npx --yes skills add "${SKILL_DIR}" --global --yes --copy --agent ${agents.join(" ")}`;
+function skillInstallCommand(agents = ["*"]) {
+  const targets = agents.map((agent) => agent === "*" ? '"*"' : agent).join(" ");
+  return `npx --yes skills add "${SKILL_DIR}" --global --yes --copy --agent ${targets}`;
 }
 
 function skillHelp() {
   console.log(`Usage:
-  browser-relay skill                         Print the legacy Codex install command
+  browser-relay skill                         Print the install command for all agents
+  browser-relay skill command [--agent <name>]  Print an install command; defaults to all agents
   browser-relay skill install --agent <name>  Install/update and verify the bundled Skill
   browser-relay skill path        Print the bundled Skill directory
   browser-relay skill help        Show this help
@@ -788,7 +790,7 @@ function skill(args = []) {
       process.exitCode = 2;
       return;
     }
-    console.log(skillInstallCommand(parsed.agents.length ? parsed.agents : ["codex"]));
+    console.log(skillInstallCommand(parsed.agents.length ? parsed.agents : undefined));
     return;
   }
 

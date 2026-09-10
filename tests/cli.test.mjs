@@ -259,11 +259,15 @@ test('skill install rejects silent zero-install and normalizes npx failures', as
   assert.match(missingNpx.stderr, /Could not run npx|skills command failed/);
 });
 
-test('skill subcommands keep legacy output while enforcing explicit install targets', async (t) => {
-  const legacy = await runCli(t, 0, ['skill']);
-  assert.equal(legacy.code, 0);
-  assert.match(legacy.stdout, /^npx --yes skills add /);
-  assert.match(legacy.stdout, /--global --yes --copy --agent codex$/m);
+test('skill hints default to all agents while enforcing explicit install targets', async (t) => {
+  const allAgents = await runCli(t, 0, ['skill']);
+  assert.equal(allAgents.code, 0);
+  assert.match(allAgents.stdout, /^npx --yes skills add /);
+  assert.match(allAgents.stdout, /--global --yes --copy --agent "\*"$/m);
+
+  const defaultCommand = await runCli(t, 0, ['skill', 'command']);
+  assert.equal(defaultCommand.code, 0);
+  assert.equal(defaultCommand.stdout, allAgents.stdout);
 
   const command = await runCli(t, 0, ['skill', 'command', '--agent=claude-code']);
   assert.equal(command.code, 0);

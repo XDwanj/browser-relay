@@ -139,7 +139,7 @@ browser-relay skill install --agent claude-code
 browser-relay skill install --agent codex claude-code
 ```
 
-命令会以无交互模式调用标准 `skills` CLI，并逐个读取目标 `SKILL.md` 做内容校验。使用标准 `~/.agents/skills` 目录的 Agent 可传 `--agent universal`；用 `browser-relay skill path` 查看包内 Skill 目录；无参数的 `browser-relay skill` 仍会输出兼容旧用法的 Codex 安装命令。安装后 Agent 就能操作你自己的浏览器，而不用另开自动化浏览器。
+命令会以无交互模式调用标准 `skills` CLI，并逐个读取目标 `SKILL.md` 做内容校验。使用标准 `~/.agents/skills` 目录的 Agent 可传 `--agent universal`；用 `browser-relay skill path` 查看包内 Skill 目录；无参数的 `browser-relay skill` 默认输出安装到所有 Agent 的命令（`--agent "*"`），只打印提示，不执行安装。安装后 Agent 就能操作你自己的浏览器，而不用另开自动化浏览器。
 
 第一次先给 Agent 一个只读的小任务：
 
