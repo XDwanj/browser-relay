@@ -110,6 +110,7 @@ export function createAutomation({
   focusTab,
   runtimeInfo = () => ({}),
   publicTabId = (id) => id,
+  onActivity = () => () => {},
 }) {
   const states = new Map(),
     children = new Map(),
@@ -1450,8 +1451,17 @@ export function createAutomation({
     }
   }
   async function request(method, path, body = {}, transport = "local") {
-    const startJob = (...args) => {
-      const job = queue.start(...args);
+    const startJob = (tabId, run, ...args) => {
+      const job = queue.start(tabId, async (task, signal) => {
+        const finish = onActivity(tabId);
+        const abort = () => finish(true);
+        signal.addEventListener('abort', abort, { once: true });
+        try { return await run(task, signal); }
+        finally {
+          signal.removeEventListener('abort', abort);
+          finish(signal.aborted);
+        }
+      }, ...args);
       jobOrigins.set(job.id, transport);
       job.done.finally(() => jobOrigins.delete(job.id));
       return job;

@@ -6,6 +6,7 @@ import { createAutomation } from './automation.js'
 import { isAutomationPath, PROTOCOL_VERSION, FEATURES } from './protocol.js'
 import { buildWaitExpression, normalizeWaitOptions } from './wait.js'
 import { createRemoteAuthMessageHandler } from './remote-auth.js'
+import { createActivityTracker, createTabActivityRenderer, isUserCdpCommand } from './activity.js'
 
 const DEFAULT_PORT = 18795
 const executorInstanceId = crypto.randomUUID()
@@ -25,60 +26,43 @@ const BADGE = {
   connecting: { text: '...', color: '#F59E0B' },
   error: { text: '!', color: '#B91C1C' },
   idle: { text: '·', color: '#6B7280' },
+  working: { text: '·', color: '#158c73' },
 }
 
-const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-const TITLE_FRAMES = ['🔵', '⚪']
-
-// Prepend an animated frame to the page title (visible in the tab strip), or
-// strip it when frame is null. Stateless: every call strips any existing frame
-// first, so page-driven title changes are picked up automatically.
-function setTabTitleFrame(tabId, frame) {
-  const expr = `(() => {
-    let t = document.title
-    for (const f of ${JSON.stringify(TITLE_FRAMES)}) {
-      if (t.startsWith(f + ' ')) { t = t.slice(f.length + 1); break }
-    }
-    document.title = ${frame ? `${JSON.stringify(frame + ' ')} + t` : 't'}
-  })()`
-  return chrome.debugger.sendCommand({ tabId }, 'Runtime.evaluate', { expression: expr, returnByValue: true }).catch(() => {})
-}
-
-/** @type {Map<number, {interval: ReturnType<typeof setInterval>, timeout: ReturnType<typeof setTimeout>}>} */
-const tabActivity = new Map()
-
-function markTabActivity(tabId) {
-  const existing = tabActivity.get(tabId)
-  if (existing) {
-    clearTimeout(existing.timeout)
-    existing.timeout = setTimeout(() => clearTabActivity(tabId), 2000)
-    return
-  }
-  let tick = 0
-  void setTabTitleFrame(tabId, TITLE_FRAMES[0])
-  const interval = setInterval(() => {
-    tick++
-    void chrome.action.setBadgeText({ tabId, text: SPINNER_FRAMES[tick % SPINNER_FRAMES.length] })
-    void chrome.action.setBadgeBackgroundColor({ tabId, color: '#3B82F6' })
-    void chrome.action.setBadgeTextColor({ tabId, color: '#FFFFFF' }).catch(() => {})
-    // Tab-strip blink: flip the title prefix every 500ms
-    if (tick % 5 === 0) void setTabTitleFrame(tabId, TITLE_FRAMES[(tick / 5) % TITLE_FRAMES.length])
-  }, 100)
-  const timeout = setTimeout(() => clearTabActivity(tabId), 2000)
-  tabActivity.set(tabId, { interval, timeout })
-}
-
-function clearTabActivity(tabId) {
-  const anim = tabActivity.get(tabId)
-  if (!anim) return
-  clearInterval(anim.interval)
-  clearTimeout(anim.timeout)
-  tabActivity.delete(tabId)
-  void setTabTitleFrame(tabId, null)
+const activityRenderer = createTabActivityRenderer(chrome)
+const tabActivity = createActivityTracker({
+  show: (tabId) => {
+    activityRenderer.start(tabId)
+    setBadge(tabId, 'working')
+  },
+  hide: (tabId) => {
+    activityRenderer.stop(tabId)
+    const tab = tabs.get(tabId)
+    if (tab?.state === 'connected' && !tab.idle)
+      setBadge(tabId, relayWs?.readyState === WebSocket.OPEN ? 'on' : 'connecting')
+  },
+})
+function beginTabActivity(tabId) {
   const tab = tabs.get(tabId)
-  if (tab?.state === 'connected' && !tab.idle) {
-    setBadge(tabId, relayWs?.readyState === WebSocket.OPEN ? 'on' : 'connecting')
+  if (tab) tab.lastActivity = Date.now()
+  return tabActivity.begin(tabId)
+}
+function clearTabActivity(tabId) { tabActivity.clear(tabId) }
+const legacyActivities = new Set()
+function endLegacyActivities(transport) {
+  for (const activity of legacyActivities) {
+    if (activity.transport !== transport) continue
+    activity.finish(true)
+    legacyActivities.delete(activity)
   }
+}
+async function withCdpActivity(tabId, method, run, transport = 'local') {
+  if (!isUserCdpCommand(method)) return run()
+  const finish = beginTabActivity(tabId)
+  const activity = { finish, transport }
+  legacyActivities.add(activity)
+  try { return await run() }
+  finally { legacyActivities.delete(activity); finish() }
 }
 
 /** @type {WebSocket|null} */
@@ -168,9 +152,10 @@ async function getIdleDetachMs() {
 }
 
 function setBadge(tabId, kind) {
+  if (kind === 'on' && tabActivity.active(tabId)) kind = 'working'
   const cfg = BADGE[kind]
-  void chrome.action.setBadgeText({ tabId, text: cfg.text })
-  void chrome.action.setBadgeBackgroundColor({ tabId, color: cfg.color })
+  void chrome.action.setBadgeText({ tabId, text: cfg.text }).catch(() => {})
+  void chrome.action.setBadgeBackgroundColor({ tabId, color: cfg.color }).catch(() => {})
   void chrome.action.setBadgeTextColor({ tabId, color: '#FFFFFF' }).catch(() => {})
 }
 
@@ -306,6 +291,7 @@ async function ensureRelayConnection() {
 
 function onRelayClosed(reason) {
   automation.disconnect("local")
+  endLegacyActivities('local')
   relayWs = null
 
   for (const [id, p] of pending.entries()) {
@@ -737,7 +723,6 @@ async function handleForwardCdpCommand(msg) {
   const activeTab = tabs.get(tabId)
   if (activeTab) {
     activeTab.lastActivity = Date.now()
-    if (activeTab.state === 'connected') markTabActivity(tabId)
   }
   // closeTarget/activateTarget use the tabs API and need no debugger — everything
   // else must wake an idle tab first.
@@ -775,13 +760,19 @@ async function handleForwardCdpCommand(msg) {
   const tabState = tabs.get(tabId)
   const mainSessionId = tabState?.sessionId
   const debuggerSession = sessionId && mainSessionId && sessionId !== mainSessionId ? { ...debuggee, sessionId } : debuggee
-  return await chrome.debugger.sendCommand(debuggerSession, method, params)
+  return await withCdpActivity(tabId, method, () => chrome.debugger.sendCommand(debuggerSession, method, params))
 }
 
 function onDebuggerEvent(source, method, params) {
   const tabId = source.tabId
   if (!tabId) return
-  if (method === 'Page.frameNavigated' && !params.frame?.parentId) automation.invalidate(tabId)
+  if (method === 'Page.frameNavigated' && !params.frame?.parentId) {
+    automation.invalidate(tabId)
+    if (!source.sessionId) {
+      activityRenderer.navigated(tabId, tabActivity.running(tabId))
+      if (!tabActivity.running(tabId)) clearTabActivity(tabId)
+    }
+  }
   const tab = tabs.get(tabId)
   if (!tab?.sessionId) return
 
@@ -1111,6 +1102,7 @@ async function ensureRemoteHubConnection() {
 
 function onRemoteHubClosed(reason) {
   automation.disconnect('remote')
+  endLegacyActivities('remote')
   remoteWs = null
   remoteAuthenticated = false
   remoteConnectedAt = null
@@ -1210,7 +1202,7 @@ async function ensureRemoteAttached(tabId) {
 // Run a CDP command against a chrome tab, attaching on demand.
 async function remoteCdp(tabId, method, params) {
   await ensureRemoteAttached(tabId)
-  return await chrome.debugger.sendCommand({ tabId }, method, params || {})
+  return await withCdpActivity(tabId, method, () => chrome.debugger.sendCommand({ tabId }, method, params || {}), 'remote')
 }
 
 async function executeRemoteApi(method, path, body) {
@@ -1811,12 +1803,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 })
 
 const automation = createAutomation({
+  onActivity: beginTabActivity,
   runtimeInfo: executorInfo,
   publicTabId: publicTabIdFor,
   resolveTab: resolveRemoteTabId,
   send: async (tabId, method, params, sessionId) => {
     await ensureRemoteAttached(tabId)
-    markTabActivity(tabId)
     return chrome.debugger.sendCommand({tabId, ...(sessionId ? {sessionId} : {})}, method, params)
   },
   createTab: async (url) => {
