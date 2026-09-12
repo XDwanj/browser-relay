@@ -4,7 +4,10 @@ export function isUserCdpCommand(method) {
   return /^(Input\.|Accessibility\.(get|query)|DOMSnapshot\.captureSnapshot$|DOM\.(getDocument|getOuterHTML|querySelector|performSearch|getSearchResults|getBoxModel|getContentQuads|scrollIntoViewIfNeeded|focus|set)|Runtime\.(evaluate|callFunctionOn)$|Page\.(navigate|reload|captureScreenshot|printToPDF|handleJavaScriptDialog)$|Network\.getResponseBody$)/.test(method);
 }
 
-export function createActivityTracker({ show, hide, settleMs = 600 }) {
+// A read or click often finishes in well under a second. Keep its indication
+// long enough to show a full favicon cycle and visible movement in the glow;
+// subsequent operations renew this window without restarting the animation.
+export function createActivityTracker({ show, hide, settleMs = 4000 }) {
   const entries = new Map();
   function clear(tabId) {
     const entry = entries.get(tabId);

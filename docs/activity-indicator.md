@@ -17,10 +17,12 @@ The daemon enables Runtime/Log capture whenever a tab attaches, so merely openin
 a page triggered the blue/white title prefix. Activity now begins at the task
 boundary, with an explicit classifier for legacy commands.
 
-The indicator coalesces short operations with a 600 ms settling interval and
+The indicator coalesces short operations with a four-second settling interval and
 clears on cancellation, disconnect or tab closure. Navigation transfers an
 active task's effect to the new main document. A page-side lease restores the
 favicon and removes the edge light if the extension stops renewing it.
+The settling interval gives short reads and clicks time to display complete
+animation cycles; another operation renews it without recreating the overlay.
 
 Icons come from Chrome's local favicon cache via the
 [`favicon` API](https://developer.chrome.com/docs/extensions/how-to/ui/favicons).
@@ -54,3 +56,10 @@ regression checks actual Chrome favicon selection, ordinary tabs opened before
 and during work, icon restoration, cancellation, navigation, reduced motion,
 page-side expiry, overlay isolation, click-through and rapid stop/start cleanup.
 The fixture is `tests/fixtures/activity.html`.
+
+Short-operation coverage checks that completed reads remain visible for a full
+favicon cycle and reuse the same overlay across a gap between calls. On
+2026-09-12, the installed extension was also verified on a live X page with eight
+reads and four scrolls (47–129 ms each): the indicator stayed active between the
+calls, showed eight distinct favicon frames, and cleared four seconds after the
+last operation, followed by the 360 ms page-glow fade.

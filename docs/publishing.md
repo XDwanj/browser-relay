@@ -12,7 +12,7 @@ To verify the connection without publishing a new version:
 
 ```bash
 gh workflow run publish.yml --ref main \
-  -f version=1.5.1 -f channel=latest -f verify_only=true
+  -f version=1.5.3 -f channel=latest -f verify_only=true
 ```
 
 The verification requests a real package-scoped grant from npm. It does not
@@ -24,6 +24,12 @@ workflow against that tag with `verify_only=false`, the exact version and the
 intended channel. The workflow rejects prereleases on `latest`. Tags created
 before the OIDC migration contain the previous workflow and must not be reused
 to test the new publishing configuration.
+
+npm may report a successful publish while the new package is still being
+processed. Wait for the exact version and intended dist-tag to become visible,
+then download the registry tarball and verify its integrity and contents against
+the release artifact before making the GitHub Release public. A temporary 404
+during processing is not a reason to submit the publication again.
 
 References: [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/)
 and [registry OIDC exchange](https://api-docs.npmjs.com/).

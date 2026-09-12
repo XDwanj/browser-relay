@@ -3,6 +3,36 @@ import assert from 'node:assert/strict';
 import { setupBrowser, waitFor } from './helpers/real-browser.mjs';
 import { updateActivityIndicator } from '../extension/activity.js';
 
+test('short operations remain visibly active across a normal gap between calls', {
+  skip: process.env.BROWSER_RELAY_E2E !== '1', timeout: 20000,
+}, async t => {
+  const env = await setupBrowser({ fixtureFile: 'activity.html' });
+  t.after(env.close);
+  const { page, tab } = env;
+  const marker = 'link[data-browser-relay-activity]';
+  const overlay = '[data-browser-relay-overlay]';
+  await tab.read();
+  await waitFor(async () => (await page.locator(marker).count()) === 1);
+  await page.evaluate(() => {
+    window.firstActivityOverlay = document.querySelector('[data-browser-relay-overlay]');
+    window.activityFrames = new Set();
+    window.activityFrameObserver = new MutationObserver(() => {
+      const icon = document.querySelector('link[data-browser-relay-activity]');
+      if (icon) window.activityFrames.add(icon.href);
+    });
+    window.activityFrameObserver.observe(document.head, { subtree: true, attributes: true, attributeFilter: ['href'] });
+  });
+  // A real read has already completed. Keep observing across a full favicon
+  // cycle instead of stretching the operation with an artificial wait job.
+  await new Promise(resolve => setTimeout(resolve, 2100));
+  assert.equal(await page.locator(marker).count(), 1, 'a completed short read must remain visibly active for a full animation cycle');
+  assert((await page.evaluate(() => window.activityFrames.size)) >= 8, 'the actual website icon must animate');
+  await tab.read();
+  assert.equal(await page.evaluate(() => window.firstActivityOverlay === document.querySelector('[data-browser-relay-overlay]')), true, 'the next read must reuse the visible overlay instead of fading out and starting again');
+  await waitFor(async () => (await page.locator(marker).count()) === 0 && (await page.locator(overlay).count()) === 0);
+  await page.evaluate(() => window.activityFrameObserver.disconnect());
+});
+
 test('activity only decorates working tabs and restores live website favicons', {
   skip: process.env.BROWSER_RELAY_E2E !== '1', timeout: 45000,
 }, async t => {
