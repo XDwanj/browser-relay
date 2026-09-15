@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+tests
+docs
+skills
+*.log
+*.tgz
+.env
+.env.*
