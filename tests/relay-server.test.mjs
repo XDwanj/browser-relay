@@ -175,7 +175,11 @@ test('old extension gets an explicit short-id upgrade error', async (t) => {
 
 test('closed or duplicate formal ids never fall through to another tab', async (t) => {
   const relay = await startRelay(t);
-  const extension = await connectFakeExtension(t, relay.port, (cmd) => {
+  let finishInitialization;
+  const initialization = new Promise(resolve => { finishInitialization = resolve; });
+  t.after(() => finishInitialization());
+  const extension = await connectFakeExtension(t, relay.port, async (cmd) => {
+    if (cmd.method === 'Runtime.enable') await initialization;
     if (cmd.method === 'Runtime.evaluate') return { result: { value: cmd.sessionId } };
     return {};
   });
@@ -187,7 +191,11 @@ test('closed or duplicate formal ids never fall through to another tab', async (
 
   extension.sendEvent('session-a', 'Target.detachedFromTarget', { sessionId: 'session-a', targetId: 'target-a' });
   await waitFor(async () => (await fetchJson(relay.port, '/api/tabs')).body.tabs?.length === 1);
-  const before = extension.commands.length;
+  const evaluations = () => extension.commands.filter(cmd => cmd.method === 'Runtime.evaluate');
+  const before = evaluations().length;
+  // Make background subscription commands arrive after the baseline, as in CI.
+  finishInitialization();
+  await waitFor(() => extension.commands.some(cmd => cmd.method === 'Log.enable'));
   const stale = await fetchJson(relay.port, '/api/eval', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -196,7 +204,7 @@ test('closed or duplicate formal ids never fall through to another tab', async (
 
   assert.equal(stale.status, 404);
   assert.equal(stale.body.code, 'tab_not_found');
-  assert.equal(extension.commands.length, before);
+  assert.equal(evaluations().length, before, 'A stale tab ID must not evaluate in any browser session');
   const remaining = await fetchJson(relay.port, '/api/tabs');
   assert.deepEqual(remaining.body.tabs.map((tab) => tab.id), ['t_BBBBBBBBBB']);
 });
