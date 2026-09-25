@@ -4,6 +4,7 @@ import {
   remoteHttpBase,
 } from "./remote-protocol.js";
 import { randomUUID } from "node:crypto";
+import { GROUP_COMMANDS, validateGroupCommand } from '../extension/groups.js';
 import { isAutomationPath, isTaskRequest } from "../extension/protocol.js";
 
 export class BrowserRelayError extends Error {
@@ -108,6 +109,12 @@ export function createBrowser({
   let timer,
     disposed = false,
     sessionError;
+  function groupCommand(action, params = {}) {
+    validateGroupCommand(action, params);
+    const spec = GROUP_COMMANDS[action];
+    const path = spec.method === 'GET' ? `${spec.path}?${new URLSearchParams(params)}` : spec.path;
+    return request(spec.method, path, spec.method === 'GET' ? undefined : params);
+  }
   const request = async (method, path, body, options) => {
     const history = method === "GET" && path.startsWith("/api/tasks/");
     if (disposed && !history)
@@ -284,6 +291,14 @@ export function createBrowser({
       );
     },
     tabs: async () => (await request("GET", "/api/tabs")).tabs,
+    groups: {
+      list: params => groupCommand('list', params),
+      tabs: groupId => groupCommand('tabs', { groupId }),
+      create: params => groupCommand('create', params),
+      update: params => groupCommand('update', params),
+      addTabs: params => groupCommand('add-tabs', params),
+      removeTabs: chromeTabIds => groupCommand('remove-tabs', { chromeTabIds }),
+    },
     tab,
     open: async (url) =>
       tab((await request("POST", "/api/tabs/create", { url })).tabId),

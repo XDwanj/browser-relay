@@ -1,5 +1,6 @@
 // Browser Relay Extension — Universal CDP agent bridge
 // Core logic adapted from openclaw auto-attach fork, stripped of gateway handshake
+import { createBrowserCommandHandler, GROUP_COMMANDS, validateGroupCommand } from './groups.js'
 
 import { SNAPSHOT_JS } from './snapshot.js'
 import { createAutomation } from './automation.js'
@@ -81,6 +82,7 @@ let nextSession = 1
 
 /** @type {Map<number, {state:'connecting'|'connected', sessionId?:string, targetId?:string, attachOrder?:number, idle?:boolean, lastActivity?:number}>} */
 const tabs = new Map()
+const handleBrowserCommand = createBrowserCommandHandler(chrome, tabs, publicTabIdFor)
 /** @type {Map<string, number>} */
 const tabBySession = new Map()
 /** @type {Map<string, number>} */
@@ -459,6 +461,17 @@ async function onRelayMessage(text) {
     pending.delete(msg.id)
     if (msg.error) p.reject(new Error(String(msg.error)))
     else p.resolve(msg.result)
+    return
+  }
+
+  if (typeof msg?.id === 'number' && msg.method === 'forwardBrowserCommand') {
+    try {
+      const result = await handleBrowserCommand(msg.params?.method || '', msg.params?.params)
+      sendToRelay({ id: msg.id, result })
+    } catch (err) {
+      sendToRelay({ id: msg.id, error: { message: err.message || String(err), status: err.status || 502,
+        code: err.code || 'BROWSER_ERROR', ...(err.partial ? { partial: true, groupId: err.groupId } : {}) } })
+    }
     return
   }
 
@@ -1210,6 +1223,21 @@ async function executeRemoteApi(method, path, body) {
   const p = u.pathname
   const payload = body && typeof body === 'object' ? body : {}
 
+  const groupRoute = Object.entries(GROUP_COMMANDS).find(([, spec]) => spec.method === method && spec.path === p.replace(/\/$/, ''))
+  if (groupRoute) {
+    try {
+      const params = method === 'GET' ? Object.fromEntries(u.searchParams) : body
+      if (method === 'GET') for (const key of ['groupId', 'windowId']) {
+        if (params[key] !== undefined) params[key] = /^\d+$/.test(params[key]) ? Number(params[key]) : NaN
+      }
+      validateGroupCommand(groupRoute[0], params)
+      return { status: 200, body: { ok: true, ...await handleBrowserCommand(`groups.${groupRoute[0]}`, params) } }
+    } catch (error) {
+      return { status: error.status || 502, body: { ok: false, error: error.message, code: error.code || 'BROWSER_ERROR',
+        ...(error.partial ? { partial: true, groupId: error.groupId } : {}) } }
+    }
+  }
+
   if (isAutomationPath(p)) {
     try { const result = await automation.request(method, path, payload, 'remote'); return {status:result.ok===false ? result.status || 400 : 200,body:result} }
     catch(error) { return apiError(error.code || 'automation_failed', error.message, error.status || 500) }
@@ -1238,7 +1266,7 @@ async function apiListTabs() {
   const list = []
   for (const t of await chrome.tabs.query({})) {
     if (!isAttachableUrl(t.url)) continue
-    list.push({ id: publicTabIdFor(t.id), title: t.title || '', url: t.url || '', attached: tabs.get(t.id)?.state === 'connected' })
+    list.push({ id: publicTabIdFor(t.id), title: t.title || '', url: t.url || '', attached: tabs.get(t.id)?.state === 'connected', chromeTabId: t.id, windowId: t.windowId, groupId: t.groupId ?? -1 })
   }
   await persistState()
   return { ok: true, tabs: list }

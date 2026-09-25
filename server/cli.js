@@ -4,6 +4,7 @@ import { chmodSync, existsSync, readFileSync, writeFileSync, mkdirSync, readdirS
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir, platform } from "node:os";
+import { GROUP_COMMANDS, validateGroupCommand } from "../extension/groups.js";
 import { DEFAULT_REMOTE_HOST, parseRemoteDeviceId, remoteHttpBase } from "./remote-protocol.js";
 import { runNpxSync } from "./npx-runner.js";
 import { createTransport } from "./sdk.js";
@@ -1088,7 +1089,7 @@ function parseArgs(args) {
         value = arg.slice(eq + 1);
       } else if (BOOLEAN_FLAGS.has(name) || BOOLEAN_FLAGS.has(rawName)) {
         value = true;
-      } else if (args[i + 1] && !args[i + 1].startsWith("-")) {
+      } else if (args[i + 1] !== undefined && !args[i + 1].startsWith("-")) {
         value = args[++i];
       } else {
         value = true;
@@ -1450,6 +1451,25 @@ async function browserApiCommand(cmd, args) {
       } finally {await runtime.close();}
       return;
     }
+    case "groups": {
+      const action = positional[0] || "list";
+      const params = {};
+      for (const [key, value] of Object.entries(flags)) {
+        if (["json", "remote", "remoteDeviceId", "remoteHost"].includes(key)) continue;
+        if (key === "groupId" || key === "windowId") params[key] = typeof value === "string" && /^\d+$/.test(value) ? Number(value) : NaN;
+        else if (key === "chromeTabIds") params[key] = typeof value === "string" ? value.split(",").map(id => /^\d+$/.test(id) ? Number(id) : NaN) : value;
+        else if (key === "collapsed") params[key] = value === "true" || value === true ? true : value === "false" ? false : value;
+        else params[key] = value;
+      }
+      validateGroupCommand(action, params);
+      const spec = GROUP_COMMANDS[action];
+      const path = spec.method === 'GET' ? `${spec.path}?${new URLSearchParams(params)}` : spec.path;
+      try { return printData(await relayRequest(spec.method, path, spec.method === 'GET' ? undefined : params), true); }
+      catch (err) {
+        if (err.payload?.partial) console.error(JSON.stringify(err.payload));
+        throw err;
+      }
+    }
     case "debug": {
       return printData(await relayRequest("GET", "/api/debug"), true);
     }
@@ -1673,6 +1693,12 @@ async function browserApiCommand(cmd, args) {
 
 function apiHelp() {
   console.log(`Browser operation commands:
+  groups list [--window-id 1] [--title "Project A"]
+  groups tabs --group-id 7
+  groups create --chrome-tab-ids 123,124 --title "Research" --color blue
+  groups update --group-id 7 --title "" --collapsed false
+  groups add-tabs --group-id 7 --chrome-tab-ids 125
+  groups remove-tabs --chrome-tab-ids 125
   tabs                         List attached Chrome tabs
   debug                        Show relay diagnostics
   console [--tab id]           Print captured console/page errors
@@ -1747,6 +1773,7 @@ switch (cmd) {
   case "uninstall": await uninstall(); break;
   case "remote": remoteCommand(process.argv.slice(3)); break;
   case "tabs":
+  case "groups":
   case "read":
   case "capabilities":
   case "focus":

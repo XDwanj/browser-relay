@@ -417,3 +417,74 @@ npm test
 ## License
 
 MIT
+
+## Chrome 标签页分组
+
+更新后重启 relay，并在 `chrome://extensions` 重载本仓库的扩展（新增 `tabGroups` 权限）。服务端与扩展需要一起更新；MCP 客户端也需重启以刷新工具列表。
+
+```bash
+browser-relay groups list --title '项目 A'
+browser-relay groups tabs --group-id 7
+browser-relay groups create --chrome-tab-ids 123,124 --title '待处理' --color blue
+browser-relay groups update --group-id 7 --title '' --collapsed false
+browser-relay groups add-tabs --group-id 7 --chrome-tab-ids 125
+browser-relay groups remove-tabs --chrome-tab-ids 125
+```
+
+所有分组命令输出 JSON。`list` 支持 `--window-id` 和精确名称筛选；重名组会全部返回。加入另一个组即换组。移出不会关闭页面，最后一个成员移出后组自动消失。创建组必须提供成员；创建、加入和换组均拒绝跨窗口操作。
+
+| HTTP 接口 | 参数 | 成功响应 |
+| --- | --- | --- |
+| `GET /api/groups` | 可选 `windowId`、`title` | `{ ok: true, groups }` |
+| `GET /api/groups/tabs` | `groupId` | `{ ok: true, tabs }` |
+| `POST /api/groups/create` | `chromeTabIds`，可选 `title`、`color`、`collapsed` | `{ ok: true, group }` |
+| `POST /api/groups/update` | `groupId`，至少一个 `title`、`color`、`collapsed` | `{ ok: true, group }` |
+| `POST /api/groups/add-tabs` | `groupId`、`chromeTabIds` | `{ ok: true, group }` |
+| `POST /api/groups/remove-tabs` | `chromeTabIds` | `{ ok: true, chromeTabIds }` |
+
+组对象为 `{ id, title, color, windowId, collapsed }`。颜色支持 `grey/blue/red/yellow/green/pink/purple/cyan/orange`。组 ID 仅在当前浏览器会话中有效，应先查询再使用。
+
+`GET /api/tabs` 仍只返回已连接调试器的页面；扩展在线时新增元数据，原有字符串 `id` 含义不变：
+
+```diff
+ {
+   "id": "t_A7k2Pm9QxL",
+   "title": "项目文档",
+-  "url": "https://example.com"
++  "url": "https://example.com",
++  "chromeTabId": 123,
++  "windowId": 1,
++  "groupId": 7,
++  "attached": true
+ }
+```
+
+`/api/groups/tabs` 返回全部可访问成员，包括未连接调试器的页面；未连接成员的 `id` 为 `null`，`attached` 为 `false`。页面阅读操作使用字符串 `id`，分组操作使用数字 `chromeTabId`。未分组的 `groupId` 为 `-1`。查询实时读取 Chrome 状态，不缓存分组。
+
+参数错误返回 HTTP 400，失效或不可访问的组/标签页返回 404，跨窗口返回 409。若已完成分组，但随后修改属性或读取组信息失败，返回 HTTP 502：
+
+```json
+{ "ok": false, "code": "PARTIAL_SUCCESS", "error": "...", "partial": true, "groupId": 7 }
+```
+
+此时应查询该组并用 `update` 补充属性，不要重新创建。CLI 将部分成功信息写入 stderr 并非零退出；SDK 抛出的异常携带 `partial` 和 `groupId`；MCP 返回 `isError: true` 及同样的信息。
+
+MCP 新增 `browser_groups_list`、`browser_groups_tabs`、`browser_groups_create`、`browser_groups_update`、`browser_groups_add_tabs`、`browser_groups_remove_tabs` 六个工具。
+
+JavaScript SDK（Node.js 18+）：
+
+```js
+import { createClient } from '@linsoai/browser-relay/server/client.js';
+const relay = createClient('http://127.0.0.1:18795');
+const { groups } = await relay.groups.list({ title: '项目 A' });
+// 名称可能重复，先根据 windowId 选择目标。
+const { tabs } = await relay.groups.tabs(groups[0].id);
+for (const tab of tabs.filter(tab => tab.attached)) {
+  const page = await relay.request('GET', '/api/snapshot', { tabId: tab.id });
+  console.log(page.snapshot);
+}
+// 另有 groups.create(params)、update(params)、addTabs(params)、removeTabs(chromeTabIds)。
+```
+
+
+现有 `createBrowser()` SDK 同样提供 `browser.groups`，方法与上面一致，支持远程 transport。CLI 分组命令支持现有的 `--remote` 和 `--remote-host` 选项。

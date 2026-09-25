@@ -1,6 +1,6 @@
 {
   "name": "@linsoai/browser-relay",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "type": "module",
   "engines": {
     "node": ">=18"
@@ -9,7 +9,7 @@
   "homepage": "https://github.com/reliefeai/browser-relay#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/reliefeai/browser-relay.git"
+    "url": "git+https://github.com/XDwanj/browser-relay.git"
   },
   "main": "server/relay-server.js",
   "bin": {
@@ -33,12 +33,12 @@
     "docs/releases/"
   ],
   "scripts": {
+    "test": "node --test",
     "start": "node server/relay-server.js",
     "hub": "node server/hub-server.js",
     "hub:dry-run": "wrangler deploy --config hub/wrangler.toml --dry-run",
     "hub:deploy": "wrangler deploy --config hub/wrangler.toml",
     "mcp": "node server/mcp-server.js",
-    "test": "node --test",
     "pack:dry-run": "npm pack --dry-run",
     "sync-version": "node scripts/sync-version.mjs",
     "prepublishOnly": "node scripts/check-publish.mjs && node scripts/sync-version.mjs",
@@ -77,6 +77,7 @@
   },
   "exports": {
     ".": "./server/relay-server.js",
-    "./sdk": "./server/sdk.js"
+    "./sdk": "./server/sdk.js",
+    "./server/client.js": "./server/client.js"
   }
 }

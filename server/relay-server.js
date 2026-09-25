@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { WebSocketServer, WebSocket } from "ws";
 import { SNAPSHOT_JS } from "./snapshot.js";
+import { GROUP_COMMANDS, validateGroupCommand } from "../extension/groups.js";
 import { buildWaitExpression, normalizeWaitOptions } from "../extension/wait.js";
 import { createCdpBridge } from "./cdp-bridge.js";
 import { isAutomationPath, isTaskRequest, PROTOCOL_VERSION } from "../extension/protocol.js";
@@ -114,14 +115,14 @@ function waitForExtension(timeoutMs = 3_000) {
 // ---------------------------------------------------------------------------
 // Send CDP command to extension
 // ---------------------------------------------------------------------------
-function sendToExtension(method, params, sessionId) {
+function sendToExtension(method, params, sessionId, command = "forwardCDPCommand") {
   const ws = extensionWs;
   if (!ws || ws.readyState !== WebSocket.OPEN) {
     return Promise.reject(new ApiError(503, "extension_not_connected", "Extension not connected", { retryable: true }));
   }
   const id = nextExtensionId++;
   commandsSent++;
-  const payload = { id, method: "forwardCDPCommand", params: { method, params, ...(sessionId ? { sessionId } : {}) } };
+  const payload = { id, method: command, params: { method, params, ...(sessionId ? { sessionId } : {}) } };
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       pendingCommands.delete(id);
@@ -398,7 +399,7 @@ function onExtensionMessage(data) {
     const pending = pendingCommands.get(msg.id);
     if (!pending) return;
     pendingCommands.delete(msg.id);
-    if (msg.error) pending.reject(typeof msg.error === "object" ? new ApiError(msg.error.status || 500,msg.error.code || "cdp_error",msg.error.message || "Browser command failed") : new Error(String(msg.error)));
+    if (msg.error) pending.reject(typeof msg.error === "object" ? Object.assign(new ApiError(msg.error.status || 500,msg.error.code || "cdp_error",msg.error.message || "Browser command failed"), { partial: msg.error.partial, groupId: msg.error.groupId }) : new Error(String(msg.error)));
     else pending.resolve(msg.result);
     return;
   }
@@ -663,11 +664,40 @@ async function handleTabs(_req, res) {
   if (extensionProtocolError) {
     throw new ApiError(409, "extension_upgrade_required", extensionProtocolError);
   }
+  if (extensionConnected() && executorInfo?.features.includes('groups')) {
+    const result = await sendToExtension('tabs.list', {}, undefined, 'forwardBrowserCommand');
+    return jsonResponse(res, 200, { ok: true, ...result });
+  }
   const tabs = [];
   for (const t of connectedTargets.values()) {
     tabs.push({ id: t.tabId, title: t.targetInfo?.title || "", url: t.targetInfo?.url || "" });
   }
   jsonResponse(res, 200, { ok: true, tabs });
+}
+
+function groupHandler(action) {
+  return async (req, res) => {
+    let params;
+    try {
+      params = req.method === "GET" ? Object.fromEntries(new URL(req.url, "http://localhost").searchParams) : await readBody(req);
+      if (req.method === "GET") {
+        for (const key of ["groupId", "windowId"]) {
+          if (params[key] !== undefined) params[key] = /^\d+$/.test(params[key]) ? Number(params[key]) : NaN;
+        }
+      }
+      validateGroupCommand(action, params);
+    } catch (err) { return errorResponse(res, 400, err.message); }
+    await ensureExtension();
+    try {
+      const result = await sendToExtension(`groups.${action}`, params, undefined, "forwardBrowserCommand");
+      jsonResponse(res, 200, { ok: true, ...result });
+    } catch (err) {
+      jsonResponse(res, [400, 404, 409, 502, 503].includes(err.status) ? err.status : 502, {
+        ok: false, error: err.message, code: err.code || "BROWSER_ERROR",
+        ...(err.partial ? { partial: true, groupId: err.groupId } : {}),
+      });
+    }
+  };
 }
 
 async function handleConsole(req, res) {
@@ -1218,6 +1248,7 @@ const server = createServer(async (req, res) => {
     }
 
     const routeMap = {
+      ...Object.fromEntries(Object.entries(GROUP_COMMANDS).map(([action, spec]) => [`${spec.method} ${spec.path}`, groupHandler(action)])),
       "GET /api/tabs": handleTabs,
       "GET /api/console": handleConsole,
       "POST /api/console/clear": handleConsoleClear,

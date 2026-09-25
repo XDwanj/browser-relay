@@ -12,6 +12,7 @@
  *   BROWSER_RELAY_URL=http://127.0.0.1:18795 node mcp-server.js
  */
 import { readFileSync } from "node:fs";
+import { GROUP_COMMANDS, validateGroupCommand } from "../extension/groups.js";
 import { randomUUID } from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createTransport } from "./sdk.js";
@@ -104,6 +105,23 @@ function toolErrorPayload(err) {
 // Tool definitions
 // ---------------------------------------------------------------------------
 const TOOLS = [
+  ...Object.entries(GROUP_COMMANDS).map(([action, spec]) => ({
+    name: `browser_groups_${action.replaceAll('-', '_')}`,
+    description: {
+      list: 'List Chrome tab groups, optionally by window or exact title. Duplicate titles return all matches. Group IDs last only for the browser session.',
+      tabs: 'List all members of a group, including unattached tabs. Use id for page operations and chromeTabId for group management. Unattached members have id: null.',
+      create: 'Create a group from native Chrome tab IDs in one window. On partial failure, use the returned groupId to update instead of recreating.',
+      update: 'Change group title, color or collapsed state. Empty title and collapsed: false are valid.',
+      'add-tabs': 'Add or move tabs to a group in the same window, using native Chrome tab IDs.',
+      'remove-tabs': 'Ungroup native Chrome tab IDs without closing them. Empty groups disappear.',
+    }[action],
+    inputSchema: { type: 'object', properties: spec.properties, required: spec.required, additionalProperties: false },
+    handler: async (args) => {
+      validateGroupCommand(action, args || {});
+      const path = spec.method === 'GET' ? `${spec.path}?${new URLSearchParams(args || {})}` : spec.path;
+      return relayRequest(spec.method, path, spec.method === 'GET' ? undefined : args);
+    },
+  })),
   {
     name: "browser_tabs",
     description: "List all browser tabs currently attached via the Browser Relay extension. Returns tab IDs, titles, and URLs. Call this first to discover available tabs.",

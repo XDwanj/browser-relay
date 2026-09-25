@@ -441,3 +441,52 @@ Load the local `extension/` directory from `chrome://extensions` in Developer mo
 ## License
 
 MIT
+
+## Chrome tab groups
+
+Restart the relay and reload the extension in `chrome://extensions` after updating: the extension now requires `tabGroups` permission. Update both together and restart MCP clients to refresh their tool list.
+
+```bash
+browser-relay groups list --title 'Project A' --window-id 1
+browser-relay groups tabs --group-id 7
+browser-relay groups create --chrome-tab-ids 123,124 --title 'Research' --color blue
+browser-relay groups update --group-id 7 --title '' --collapsed false
+browser-relay groups add-tabs --group-id 7 --chrome-tab-ids 125
+browser-relay groups remove-tabs --chrome-tab-ids 125
+```
+
+Commands return JSON. List filters use exact titles and return all duplicates. Group IDs are session-scoped. Creating a group requires members; grouping across windows is rejected. Adding members to another group moves them; ungrouping does not close tabs, and empty groups disappear.
+
+| HTTP endpoint | Parameters | Success response |
+| --- | --- | --- |
+| `GET /api/groups` | Optional `windowId`, `title` | `{ ok: true, groups }` |
+| `GET /api/groups/tabs` | `groupId` | `{ ok: true, tabs }` |
+| `POST /api/groups/create` | `chromeTabIds`, optional `title`, `color`, `collapsed` | `{ ok: true, group }` |
+| `POST /api/groups/update` | `groupId`, at least one of `title`, `color`, `collapsed` | `{ ok: true, group }` |
+| `POST /api/groups/add-tabs` | `groupId`, `chromeTabIds` | `{ ok: true, group }` |
+| `POST /api/groups/remove-tabs` | `chromeTabIds` | `{ ok: true, chromeTabIds }` |
+
+A group contains `{ id, title, color, windowId, collapsed }`. Colors: `grey`, `blue`, `red`, `yellow`, `green`, `pink`, `purple`, `cyan`, `orange`.
+
+`/api/tabs` retains its attached-page scope and public string `id`. With the extension online, entries also contain native numeric `chromeTabId`, `windowId`, `groupId` and `attached`. Group membership queries include unattached tabs, with `id: null` and `attached: false`. Use `id` for snapshots/navigation and `chromeTabId` for group management. Ungrouped tabs have `groupId: -1`. Queries read live Chrome state.
+
+Invalid arguments return HTTP 400, missing/inaccessible IDs 404, and cross-window grouping 409. If grouping succeeds but updating/reading the group fails, HTTP 502 returns `{ ok: false, error, code: 'PARTIAL_SUCCESS', partial: true, groupId }`. Query that group and retry its update instead of creating another. CLI prints partial failure details to stderr and exits nonzero; SDK exceptions preserve `partial` and `groupId`; MCP marks failed results with `isError: true`.
+
+MCP exposes `browser_groups_list`, `browser_groups_tabs`, `browser_groups_create`, `browser_groups_update`, `browser_groups_add_tabs` and `browser_groups_remove_tabs`.
+
+JavaScript SDK (Node.js 18+):
+
+```js
+import { createClient } from '@linsoai/browser-relay/server/client.js';
+const relay = createClient('http://127.0.0.1:18795');
+const { groups } = await relay.groups.list({ title: 'Research' });
+// Select the intended window if titles are duplicated.
+const { tabs } = await relay.groups.tabs(groups[0].id);
+for (const tab of tabs.filter(tab => tab.attached)) {
+  console.log(await relay.request('GET', '/api/snapshot', { tabId: tab.id }));
+}
+// Also: groups.create(params), update(params), addTabs(params), removeTabs(chromeTabIds).
+```
+
+
+The existing `createBrowser()` SDK also exposes `browser.groups` with the same methods, including remote transports. CLI group commands accept the existing `--remote` and `--remote-host` options.

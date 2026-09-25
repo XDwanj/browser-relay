@@ -3,6 +3,7 @@ export const isTaskRequest = (method, path) =>
   ["/api/read", "/api/observe"].includes(path) ||
   (method === "POST" && ["/api/actions", "/api/evaluate", "/api/tabs/focus"].includes(path));
 export const FEATURES = [
+  "groups",
   "observe",
   "read",
   "ax",
