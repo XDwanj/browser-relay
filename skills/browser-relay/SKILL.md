@@ -1,6 +1,6 @@
 ---
 name: browser-relay
-description: Operate the user's existing, logged-in Chrome locally or on an explicitly connected remote machine. Read complete page content with actionable refs and links, perform grouped actions, and use screenshots in persistent browser sessions. Skip static public pages and pure REST APIs.
+description: Operate the user's existing, logged-in Chrome locally or on an explicitly connected remote machine. Discover and manage Chrome tab groups, read complete page content with actionable refs and links, perform grouped actions, and use screenshots in persistent browser sessions. Skip static public pages and pure REST APIs.
 ---
 
 # Browser Relay
@@ -19,6 +19,19 @@ operate it; never stop someone else's session merely to gain access. These
 leases coordinate trusted clients, not access control against local software.
 
 ## Choose the observation that answers the question
+
+For requests about a Chrome tab group, discover its actual membership first:
+
+```bash
+browser-relay groups list
+browser-relay groups tabs --group-id <returned-group-id>
+```
+
+Match names and windows from the results; titles can repeat. Group members use
+public string `id` for page operations and numeric `chromeTabId` for grouping.
+Read [tab-groups.md](references/tab-groups.md) when filtering groups, managing
+membership or properties, or using groups through the SDK/MCP. Listing a group's
+members does not read the contents of its pages.
 
 - **Reading:** `read` focuses on main content and preserves semantic groups,
   complete text and full URLs. `read --ref <ref>` reads an observed subtree.

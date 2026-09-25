@@ -39,6 +39,7 @@ preserve abort handling when implementing a custom transport.
 | --- | --- |
 | `browser.sessionId` / `.claims()` / `.heartbeat()` / `.dispose()` | Session identity, tab owners, lease renewal and explicit stop (tabs remain open) |
 | `browser.tabs()` | Current `{id,title,url}` entries |
+| `browser.groups` | Discover groups/members and manage grouping; see [tab-groups.md](tab-groups.md) for ID types, methods and partial failures |
 | `browser.tab(id)` | Handle for an existing discovered tab |
 | `browser.open(url)` | New background tab handle |
 | `browser.capabilities()` | Negotiated executor capabilities |
